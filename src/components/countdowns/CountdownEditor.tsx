@@ -1,0 +1,118 @@
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Calendar, Save } from 'lucide-react'
+import type { Countdown } from '../../types'
+
+interface CountdownEditorProps {
+  isOpen: boolean
+  onClose: () => void
+  onSubmit: (title: string, targetDate: string) => void
+  editing?: Countdown | null
+  submitting: boolean
+}
+
+export function CountdownEditor({
+  isOpen,
+  onClose,
+  onSubmit,
+  editing,
+  submitting,
+}: CountdownEditorProps) {
+  const [title, setTitle] = useState('')
+  const [targetDate, setTargetDate] = useState('')
+
+  useEffect(() => {
+    if (editing) {
+      setTitle(editing.title)
+      setTargetDate(editing.target_date)
+    } else {
+      setTitle('')
+      setTargetDate('')
+    }
+  }, [editing, isOpen])
+
+  const handleSubmit = async () => {
+    if (!title.trim() || !targetDate) return
+    await onSubmit(title.trim(), targetDate)
+    onClose()
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="bg-white rounded-t-3xl w-full max-w-lg p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-700">
+                {editing ? '编辑倒计时' : '新建倒计时'}
+              </h2>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  标题
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="比如：下次见面、纪念日..."
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none"
+                  maxLength={30}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4" />
+                    日期
+                  </span>
+                </label>
+                <input
+                  type="date"
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={!title.trim() || !targetDate || submitting}
+              className="w-full mt-6 py-3 bg-gradient-to-r from-sakura to-sakura-deep text-white rounded-full font-medium disabled:opacity-50 flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
+            >
+              {submitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Save className="w-5 h-5" />
+              )}
+              {editing ? '保存修改' : '创建倒计时'}
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
