@@ -1,4 +1,4 @@
-import type { Note, Photo, Countdown, Identity, TimelineEvent, Wish } from '../types'
+import type { Note, Photo, Countdown, Identity, TimelineEvent, Wish, AppSettings } from '../types'
 
 const KEYS = {
   NOTES: 'our-space-notes',
@@ -6,6 +6,7 @@ const KEYS = {
   COUNTDOWNS: 'our-space-countdowns',
   TIMELINE: 'our-space-timeline',
   WISHES: 'our-space-wishes',
+  SETTINGS: 'our-space-settings',
 } as const
 
 function getFromStorage<T>(key: string, defaultValue: T): T {
@@ -233,6 +234,19 @@ export const demoStorage = {
   deleteWish(id: number) {
     const wishes = getFromStorage<Wish[]>(KEYS.WISHES, [])
     saveToStorage(KEYS.WISHES, wishes.filter((w) => w.id !== id))
+  },
+
+  getSettings(): AppSettings {
+    return getFromStorage<AppSettings>(KEYS.SETTINGS, {
+      anniversary_date: '2024-01-01',
+    })
+  },
+
+  updateSettings(settings: Partial<AppSettings>) {
+    const current = this.getSettings()
+    const updated = { ...current, ...settings }
+    saveToStorage(KEYS.SETTINGS, updated)
+    return updated
   },
 }
 

@@ -42,3 +42,7 @@ export interface Wish {
   completed_at: string | null
   created_at: string
 }
+
+export interface AppSettings {
+  anniversary_date: string
+}

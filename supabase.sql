@@ -45,6 +45,16 @@ CREATE TABLE wishes (
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 应用设置表（只有一行，id=1）
+CREATE TABLE app_settings (
+  id               INTEGER PRIMARY KEY DEFAULT 1,
+  anniversary_date DATE NOT NULL DEFAULT '2024-01-01',
+  CONSTRAINT single_row CHECK (id = 1)
+);
+
+-- 插入默认设置
+INSERT INTO app_settings (id, anniversary_date) VALUES (1, '2024-01-01') ON CONFLICT DO NOTHING;
+
 -- 索引
 CREATE INDEX idx_notes_created_at ON notes(created_at DESC);
 CREATE INDEX idx_notes_parent_id ON notes(parent_id);
@@ -68,3 +78,6 @@ CREATE POLICY "Allow all on timeline" ON timeline_events FOR ALL USING (true) WI
 
 ALTER TABLE wishes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all on wishes" ON wishes FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on settings" ON app_settings FOR ALL USING (true) WITH CHECK (true);

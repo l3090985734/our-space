@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, Image, FileText, Clock, Heart, Edit3, X } from 'lucide-react'
@@ -6,38 +6,38 @@ import { useCountdowns } from '../../hooks/useCountdowns'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useNotes } from '../../hooks/useNotes'
 import { useIdentity } from '../../hooks/useIdentity'
+import { useSettings } from '../../hooks/useSettings'
 import { calculateDaysLeft, calculateDaysSince, formatTimeAgo } from '../../lib/utils'
-import { ANNIVERSARY_DATE } from '../../lib/config'
-
-const STORAGE_KEY = 'our-space-anniversary'
 
 export function HomePage() {
   const { countdowns, loading: countdownsLoading } = useCountdowns()
   const { photos, loading: photosLoading } = usePhotos()
   const { notes, loading: notesLoading } = useNotes()
   const { identity } = useIdentity()
+  const { settings, updateAnniversary } = useSettings()
   const [showEditor, setShowEditor] = useState(false)
-  const [anniversaryDate, setAnniversaryDate] = useState(ANNIVERSARY_DATE)
-  const [editDate, setEditDate] = useState(ANNIVERSARY_DATE)
+  const [editDate, setEditDate] = useState(settings.anniversary_date)
+  const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      setAnniversaryDate(saved)
-      setEditDate(saved)
+  const handleOpenEditor = () => {
+    setEditDate(settings.anniversary_date)
+    setShowEditor(true)
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await updateAnniversary(editDate)
+      setShowEditor(false)
+    } finally {
+      setSaving(false)
     }
-  }, [])
-
-  const handleSave = () => {
-    localStorage.setItem(STORAGE_KEY, editDate)
-    setAnniversaryDate(editDate)
-    setShowEditor(false)
   }
 
   const nearestCountdown = countdowns[0]
   const recentPhotos = photos.slice(0, 3)
   const recentNotes = notes.slice(0, 3)
-  const daysTogether = calculateDaysSince(anniversaryDate)
+  const daysTogether = calculateDaysSince(settings.anniversary_date)
 
   return (
     <div className="space-y-6">
@@ -66,7 +66,7 @@ export function HomePage() {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.05 }}
-        onClick={() => setShowEditor(true)}
+        onClick={handleOpenEditor}
         className="bg-white rounded-2xl p-4 shadow-sm text-center cursor-pointer hover:shadow-md transition-shadow relative group"
       >
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -84,7 +84,7 @@ export function HomePage() {
           </motion.span>
           <span className="text-lg text-sakura-deep">天</span>
         </div>
-        <p className="text-xs text-gray-400 mt-2">{anniversaryDate}</p>
+        <p className="text-xs text-gray-400 mt-2">{settings.anniversary_date}</p>
       </motion.div>
 
       <motion.div
@@ -300,9 +300,10 @@ export function HomePage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  className="flex-1 py-2.5 bg-gradient-to-r from-sakura to-sakura-deep text-white rounded-full font-medium hover:shadow-md transition-shadow"
+                  disabled={saving}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-sakura to-sakura-deep text-white rounded-full font-medium hover:shadow-md transition-shadow disabled:opacity-50"
                 >
-                  保存
+                  {saving ? '保存中...' : '保存'}
                 </button>
               </div>
             </motion.div>
