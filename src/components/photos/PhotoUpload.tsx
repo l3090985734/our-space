@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Upload, Image as ImageIcon } from 'lucide-react'
+import { X, Upload, Image as ImageIcon, AlertCircle } from 'lucide-react'
 import type { Identity } from '../../types'
 
 interface PhotoUploadProps {
@@ -20,6 +20,7 @@ export function PhotoUpload({
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [caption, setCaption] = useState('')
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,17 +33,23 @@ export function PhotoUpload({
 
   const handleSubmit = async () => {
     if (!selectedFile) return
-    await onUpload(selectedFile, caption)
-    setSelectedFile(null)
-    setPreviewUrl(null)
-    setCaption('')
-    onClose()
+    setUploadError(null)
+    try {
+      await onUpload(selectedFile, caption)
+      setSelectedFile(null)
+      setPreviewUrl(null)
+      setCaption('')
+      onClose()
+    } catch (e: any) {
+      setUploadError(e?.message || '上传失败，请重试')
+    }
   }
 
   const handleClose = () => {
     setSelectedFile(null)
     setPreviewUrl(null)
     setCaption('')
+    setUploadError(null)
     onClose()
   }
 
@@ -114,6 +121,13 @@ export function PhotoUpload({
                     rows={3}
                   />
                 </div>
+
+                {uploadError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-sm text-red-600">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
 
                 <button
                   onClick={handleSubmit}

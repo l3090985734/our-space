@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft,
@@ -81,11 +81,18 @@ export function PhotoWall({
     setDragOffset(0)
   }
 
+  // 当外部数据变化导致 currentIndex 越界时自动回退
+  useEffect(() => {
+    if (photos.length > 0 && currentIndex >= photos.length) {
+      setCurrentIndex(photos.length - 1)
+    }
+  }, [photos.length, currentIndex])
+
   const handleDelete = () => {
     if (currentPhoto) {
       onDelete(currentPhoto)
       setShowDeleteConfirm(false)
-      if (currentIndex > 0) {
+      if (currentIndex >= photos.length - 1 && currentIndex > 0) {
         setCurrentIndex(currentIndex - 1)
       }
     }

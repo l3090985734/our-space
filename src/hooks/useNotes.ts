@@ -64,7 +64,6 @@ export function useNotes() {
         setNotes((prev) => [...prev, ...notesData])
       } else {
         setNotes(notesData)
-        pageRef.current = 0
         setHasMore(notesData.length === PAGE_SIZE)
       }
 
