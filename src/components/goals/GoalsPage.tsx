@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { CountdownList } from '../countdowns/CountdownList'
 import { WishList } from '../wishes/WishList'
 
@@ -36,18 +36,12 @@ export function GoalsPage() {
         ))}
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, x: activeTab === 'wishes' ? 20 : -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: activeTab === 'wishes' ? -20 : 20 }}
-          transition={{ duration: 0.2 }}
-        >
-          {activeTab === 'countdowns' && <CountdownList />}
-          {activeTab === 'wishes' && <WishList />}
-        </motion.div>
-      </AnimatePresence>
+      <div className={activeTab === 'countdowns' ? 'block' : 'hidden'}>
+        <CountdownList />
+      </div>
+      <div className={activeTab === 'wishes' ? 'block' : 'hidden'}>
+        <WishList />
+      </div>
     </div>
   )
 }
