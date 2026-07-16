@@ -1,21 +1,43 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ChevronRight, Image, FileText, Clock, Heart } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronRight, Image, FileText, Clock, Heart, Edit3, X } from 'lucide-react'
 import { useCountdowns } from '../../hooks/useCountdowns'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useNotes } from '../../hooks/useNotes'
 import { useIdentity } from '../../hooks/useIdentity'
-import { calculateDaysLeft, formatTimeAgo } from '../../lib/utils'
+import { calculateDaysLeft, calculateDaysSince, formatTimeAgo } from '../../lib/utils'
+import { ANNIVERSARY_DATE } from '../../lib/config'
+
+const STORAGE_KEY = 'our-space-anniversary'
 
 export function HomePage() {
   const { countdowns, loading: countdownsLoading } = useCountdowns()
   const { photos, loading: photosLoading } = usePhotos()
   const { notes, loading: notesLoading } = useNotes()
   const { identity } = useIdentity()
+  const [showEditor, setShowEditor] = useState(false)
+  const [anniversaryDate, setAnniversaryDate] = useState(ANNIVERSARY_DATE)
+  const [editDate, setEditDate] = useState(ANNIVERSARY_DATE)
+
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      setAnniversaryDate(saved)
+      setEditDate(saved)
+    }
+  }, [])
+
+  const handleSave = () => {
+    localStorage.setItem(STORAGE_KEY, editDate)
+    setAnniversaryDate(editDate)
+    setShowEditor(false)
+  }
 
   const nearestCountdown = countdowns[0]
   const recentPhotos = photos.slice(0, 3)
   const recentNotes = notes.slice(0, 3)
+  const daysTogether = calculateDaysSince(anniversaryDate)
 
   return (
     <div className="space-y-6">
@@ -38,6 +60,31 @@ export function HomePage() {
         >
           <Heart className="w-8 h-8 text-sakura-accent fill-sakura-accent" />
         </motion.div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.05 }}
+        onClick={() => setShowEditor(true)}
+        className="bg-white rounded-2xl p-4 shadow-sm text-center cursor-pointer hover:shadow-md transition-shadow relative group"
+      >
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Edit3 className="w-4 h-4 text-gray-400" />
+        </div>
+        <p className="text-sm text-gray-500 mb-1">我们已经在一起</p>
+        <div className="flex items-baseline justify-center gap-1.5">
+          <motion.span
+            key={daysTogether}
+            initial={{ scale: 1.3, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-4xl font-bold font-mono text-sakura-deep"
+          >
+            {daysTogether}
+          </motion.span>
+          <span className="text-lg text-sakura-deep">天</span>
+        </div>
+        <p className="text-xs text-gray-400 mt-2">{anniversaryDate}</p>
       </motion.div>
 
       <motion.div
@@ -204,6 +251,64 @@ export function HomePage() {
           </Link>
         )}
       </motion.div>
+
+      <AnimatePresence>
+        {showEditor && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center px-6"
+            onClick={() => setShowEditor(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-700">
+                  修改纪念日
+                </h3>
+                <button
+                  onClick={() => setShowEditor(false)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-500 mb-4">
+                选择你们在一起的日子 💕
+              </p>
+
+              <input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none mb-6"
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowEditor(false)}
+                  className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-full font-medium hover:bg-gray-200 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-sakura to-sakura-deep text-white rounded-full font-medium hover:shadow-md transition-shadow"
+                >
+                  保存
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

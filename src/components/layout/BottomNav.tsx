@@ -1,17 +1,18 @@
 import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Home, Image, FileText, Clock } from 'lucide-react'
+import { Home, Image, FileText, Target, Heart } from 'lucide-react'
 
 const navItems = [
   { path: '/', icon: Home, label: '首页' },
+  { path: '/timeline', icon: Heart, label: '故事' },
   { path: '/photos', icon: Image, label: '照片' },
   { path: '/notes', icon: FileText, label: '纸条' },
-  { path: '/countdowns', icon: Clock, label: '倒计时' },
+  { path: '/countdowns', icon: Target, label: '目标' },
 ]
 
 export function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-sakura-light z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-sakura-light z-40">
       <div className="max-w-lg mx-auto flex justify-around items-center h-16 px-2">
         {navItems.map((item) => (
           <NavLink

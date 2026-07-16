@@ -1,39 +1,42 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Calendar, Save } from 'lucide-react'
-import type { Countdown } from '../../types'
+import type { TimelineEvent } from '../../types'
 
-interface CountdownEditorProps {
+interface TimelineEditorProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (title: string, targetDate: string) => void
-  editing?: Countdown | null
+  onSubmit: (title: string, eventDate: string, description: string) => void
+  editing?: TimelineEvent | null
   submitting: boolean
 }
 
-export function CountdownEditor({
+export function TimelineEditor({
   isOpen,
   onClose,
   onSubmit,
   editing,
   submitting,
-}: CountdownEditorProps) {
+}: TimelineEditorProps) {
   const [title, setTitle] = useState('')
-  const [targetDate, setTargetDate] = useState('')
+  const [eventDate, setEventDate] = useState('')
+  const [description, setDescription] = useState('')
 
   useEffect(() => {
     if (editing) {
       setTitle(editing.title)
-      setTargetDate(editing.target_date)
+      setEventDate(editing.event_date)
+      setDescription(editing.description)
     } else {
       setTitle('')
-      setTargetDate('')
+      setEventDate('')
+      setDescription('')
     }
   }, [editing, isOpen])
 
   const handleSubmit = async () => {
-    if (!title.trim() || !targetDate) return
-    await onSubmit(title.trim(), targetDate)
+    if (!title.trim() || !eventDate) return
+    await onSubmit(title.trim(), eventDate, description.trim())
     onClose()
   }
 
@@ -52,12 +55,12 @@ export function CountdownEditor({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="bg-white rounded-t-3xl w-full max-w-lg p-6"
+            className="bg-white rounded-t-3xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-gray-700">
-                {editing ? '编辑倒计时' : '新建倒计时'}
+                {editing ? '编辑故事' : '添加故事'}
               </h2>
               <button
                 onClick={onClose}
@@ -76,7 +79,7 @@ export function CountdownEditor({
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="比如：下次见面、纪念日..."
+                  placeholder="比如：第一次见面"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none"
                   maxLength={30}
                 />
@@ -91,16 +94,32 @@ export function CountdownEditor({
                 </label>
                 <input
                   type="date"
-                  value={targetDate}
-                  onChange={(e) => setTargetDate(e.target.value)}
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  故事内容
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="写写那天发生了什么..."
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none resize-none min-h-28"
+                  maxLength={500}
+                />
+                <p className="text-xs text-gray-400 text-right mt-1">
+                  {description.length}/500
+                </p>
               </div>
             </div>
 
             <button
               onClick={handleSubmit}
-              disabled={!title.trim() || !targetDate || submitting}
+              disabled={!title.trim() || !eventDate || submitting}
               className="w-full mt-6 py-3 bg-gradient-to-r from-sakura to-sakura-deep text-white rounded-full font-medium disabled:opacity-50 flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
             >
               {submitting ? (
@@ -108,7 +127,7 @@ export function CountdownEditor({
               ) : (
                 <Save className="w-5 h-5" />
               )}
-              {editing ? '保存修改' : '创建倒计时'}
+              {editing ? '保存修改' : '添加到时间线'}
             </button>
           </motion.div>
         </motion.div>

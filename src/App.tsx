@@ -4,11 +4,14 @@ import { Layout } from './components/layout/Layout'
 import { HomePage } from './components/home/HomePage'
 import { PhotoWall } from './components/photos/PhotoWall'
 import { NoteList } from './components/notes/NoteList'
-import { CountdownList } from './components/countdowns/CountdownList'
+import { GoalsPage } from './components/goals/GoalsPage'
+import { TimelineList } from './components/timeline/TimelineList'
 import { IdentityPicker } from './components/identity/IdentityPicker'
+import { PasswordPage } from './components/auth/PasswordPage'
 import { useIdentity } from './hooks/useIdentity'
 import { usePhotos } from './hooks/usePhotos'
 import { isDemoMode, initDemoData } from './lib/mockStorage'
+import { ACCESS_PASSWORD } from './lib/config'
 
 function DemoBanner() {
   const [visible, setVisible] = useState(true)
@@ -32,6 +35,7 @@ function AppContent() {
   const { identity, isLoading, selectIdentity } = useIdentity()
   const { photos, loading, uploading, uploadPhoto, deletePhoto, updateCaption } =
     usePhotos()
+  const [authenticated, setAuthenticated] = useState(false)
 
   useEffect(() => {
     if (isDemoMode()) {
@@ -39,12 +43,18 @@ function AppContent() {
     }
   }, [])
 
+  const needPassword = ACCESS_PASSWORD && ACCESS_PASSWORD.length > 0
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-sakura-light to-white flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-sakura/30 border-t-sakura rounded-full animate-spin" />
       </div>
     )
+  }
+
+  if (needPassword && !authenticated) {
+    return <PasswordPage password={ACCESS_PASSWORD} onSuccess={() => setAuthenticated(true)} />
   }
 
   if (!identity) {
@@ -76,8 +86,9 @@ function AppContent() {
                 />
               }
             />
+            <Route path="/timeline" element={<TimelineList />} />
             <Route path="/notes" element={<NoteList />} />
-            <Route path="/countdowns" element={<CountdownList />} />
+            <Route path="/countdowns" element={<GoalsPage />} />
           </Route>
         </Routes>
       </div>

@@ -8,6 +8,7 @@ import {
   Check,
   X,
   Plus,
+  ZoomIn,
 } from 'lucide-react'
 import type { Photo } from '../../types'
 import { formatTimeAgo } from '../../lib/utils'
@@ -34,6 +35,7 @@ export function PhotoWall({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showUpload, setShowUpload] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showLightbox, setShowLightbox] = useState(false)
   const [editingCaption, setEditingCaption] = useState(false)
   const [captionInput, setCaptionInput] = useState('')
   const [dragStartX, setDragStartX] = useState<number | null>(null)
@@ -209,12 +211,20 @@ export function PhotoWall({
               </button>
             )}
 
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/30 text-white flex items-center justify-center hover:bg-red-500/70 transition-colors"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
+            <div className="absolute top-3 right-3 flex gap-2">
+              <button
+                onClick={() => setShowLightbox(true)}
+                className="w-10 h-10 rounded-full bg-black/30 text-white flex items-center justify-center hover:bg-black/50 transition-colors"
+              >
+                <ZoomIn className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-10 h-10 rounded-full bg-black/30 text-white flex items-center justify-center hover:bg-red-500/70 transition-colors"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
           </motion.div>
         </AnimatePresence>
       </div>
@@ -295,7 +305,7 @@ export function PhotoWall({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-6"
+            className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center px-6"
             onClick={() => setShowDeleteConfirm(false)}
           >
             <motion.div
@@ -326,6 +336,86 @@ export function PhotoWall({
                 </button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLightbox && currentPhoto && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black z-[100] flex items-center justify-center"
+            onClick={() => setShowLightbox(false)}
+          >
+            <button
+              onClick={() => setShowLightbox(false)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors z-10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {currentIndex > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  goToPrev()
+                }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors z-10"
+              >
+                <ChevronLeft className="w-8 h-8" />
+              </button>
+            )}
+
+            {currentIndex < photos.length - 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  goToNext()
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors z-10"
+              >
+                <ChevronRight className="w-8 h-8" />
+              </button>
+            )}
+
+            <motion.div
+              key={currentPhoto.id}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="max-w-full max-h-full p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={currentPhoto.public_url}
+                alt={currentPhoto.caption || '照片'}
+                className="max-w-full max-h-[85vh] object-contain"
+              />
+              {currentPhoto.caption && (
+                <p className="text-white text-center mt-4 text-sm opacity-80">
+                  {currentPhoto.caption}
+                </p>
+              )}
+            </motion.div>
+
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5">
+              {photos.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setCurrentIndex(index)
+                  }}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    index === currentIndex
+                      ? 'bg-white w-6'
+                      : 'bg-white/40 hover:bg-white/60'
+                  }`}
+                />
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -24,3 +24,21 @@ export interface Countdown {
   target_date: string
   created_at: string
 }
+
+export interface TimelineEvent {
+  id: number
+  title: string
+  event_date: string
+  description: string
+  created_at: string
+}
+
+export interface Wish {
+  id: number
+  title: string
+  description: string
+  icon: string
+  completed: boolean
+  completed_at: string | null
+  created_at: string
+}

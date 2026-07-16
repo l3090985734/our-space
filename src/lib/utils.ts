@@ -70,3 +70,14 @@ export function calculateDaysLeft(targetDate: string): number {
   const diffMs = target.getTime() - now.getTime()
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 }
+
+export function calculateDaysSince(startDate: string): number {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  
+  const start = new Date(startDate + 'T00:00:00+08:00')
+  start.setHours(0, 0, 0, 0)
+  
+  const diffMs = now.getTime() - start.getTime()
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24))
+}
