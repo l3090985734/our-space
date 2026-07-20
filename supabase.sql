@@ -52,6 +52,17 @@ CREATE TABLE app_settings (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
+-- 时间胶囊表
+CREATE TABLE time_capsules (
+  id          BIGSERIAL PRIMARY KEY,
+  title       TEXT NOT NULL,
+  content     TEXT DEFAULT '',
+  image_url   TEXT,
+  created_by  TEXT NOT NULL CHECK (created_by IN ('he', 'she')),
+  unlock_at   TIMESTAMPTZ NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 插入默认设置
 INSERT INTO app_settings (id, anniversary_date) VALUES (1, '2024-01-01') ON CONFLICT DO NOTHING;
 
@@ -62,6 +73,7 @@ CREATE INDEX idx_photos_sort_order ON photos(sort_order, created_at DESC);
 CREATE INDEX idx_countdowns_target_date ON countdowns(target_date);
 CREATE INDEX idx_timeline_events_date ON timeline_events(event_date DESC);
 CREATE INDEX idx_wishes_completed ON wishes(completed, created_at DESC);
+CREATE INDEX idx_time_capsules_unlock ON time_capsules(unlock_at DESC);
 
 -- RLS 策略（允许所有人读写，因为链接只分享给女朋友）
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
@@ -81,3 +93,6 @@ CREATE POLICY "Allow all on wishes" ON wishes FOR ALL USING (true) WITH CHECK (t
 
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all on settings" ON app_settings FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE time_capsules ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on time_capsules" ON time_capsules FOR ALL USING (true) WITH CHECK (true);

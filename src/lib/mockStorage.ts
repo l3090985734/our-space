@@ -1,4 +1,4 @@
-import type { Note, Photo, Countdown, Identity, TimelineEvent, Wish, AppSettings } from '../types'
+import type { Note, Photo, Countdown, Identity, TimelineEvent, Wish, AppSettings, TimeCapsule } from '../types'
 
 const KEYS = {
   NOTES: 'our-space-notes',
@@ -7,6 +7,7 @@ const KEYS = {
   TIMELINE: 'our-space-timeline',
   WISHES: 'our-space-wishes',
   SETTINGS: 'our-space-settings',
+  CAPSULES: 'our-space-capsules',
 } as const
 
 function getFromStorage<T>(key: string, defaultValue: T): T {
@@ -67,7 +68,8 @@ export const demoStorage = {
     storagePath: string,
     caption: string,
     uploadedBy: Identity,
-    publicUrl: string
+    publicUrl: string,
+    thumbnail?: string
   ): Photo {
     const photos = this.getPhotos()
     const newPhoto: Photo = {
@@ -78,6 +80,7 @@ export const demoStorage = {
       sort_order: 0,
       created_at: new Date().toISOString(),
       public_url: publicUrl,
+      thumbnail,
     }
     photos.unshift(newPhoto)
     saveToStorage(KEYS.PHOTOS, photos)
@@ -236,6 +239,36 @@ export const demoStorage = {
     saveToStorage(KEYS.WISHES, wishes.filter((w) => w.id !== id))
   },
 
+  getTimeCapsules(): TimeCapsule[] {
+    const data = getFromStorage<TimeCapsule[]>(KEYS.CAPSULES, [])
+    return [...data].sort(
+      (a, b) =>
+        new Date(a.unlock_at).getTime() - new Date(b.unlock_at).getTime()
+    )
+  },
+
+  addTimeCapsule(
+    title: string,
+    content: string,
+    createdBy: Identity,
+    unlockAt: string,
+    imageUrl?: string
+  ): TimeCapsule {
+    const capsules = getFromStorage<TimeCapsule[]>(KEYS.CAPSULES, [])
+    const newCapsule: TimeCapsule = {
+      id: generateId(),
+      title,
+      content,
+      image_url: imageUrl,
+      created_by: createdBy,
+      unlock_at: unlockAt,
+      created_at: new Date().toISOString(),
+    }
+    capsules.push(newCapsule)
+    saveToStorage(KEYS.CAPSULES, capsules)
+    return newCapsule
+  },
+
   getSettings(): AppSettings {
     return getFromStorage<AppSettings>(KEYS.SETTINGS, {
       anniversary_date: '2024-01-01',
@@ -287,5 +320,25 @@ export function initDemoData() {
     demoStorage.addWish('一起养一只猫', '给它取个可爱的名字，一起铲屎 🐱', '🐱')
     demoStorage.addWish('去一次迪士尼', '当一天小朋友，拍好多好多照片 🎠', '🎠')
     demoStorage.addWish('一起做一顿饭', '从买菜到洗碗，两个人一起完成 🍳', '🍳')
+  }
+  if (demoStorage.getTimeCapsules().length === 0) {
+    const pastDate = new Date()
+    pastDate.setDate(pastDate.getDate() - 7)
+    demoStorage.addTimeCapsule(
+      '给一周后的我们',
+      '不知道一周后的我们在做什么呢？有没有一起吃好吃的？有没有一起看电影？不管怎样，希望我们都开开心心的 💗',
+      'she',
+      pastDate.toISOString()
+    )
+
+    const futureDate = new Date()
+    futureDate.setDate(futureDate.getDate() + 30)
+    futureDate.setHours(20, 0, 0, 0)
+    demoStorage.addTimeCapsule(
+      '给一个月后的你',
+      '一个月后的你，看到这个的时候是什么心情呢？希望你已经完成了最近在忙的事情，好好休息一下。想你 💙',
+      'he',
+      futureDate.toISOString()
+    )
   }
 }

@@ -10,28 +10,17 @@ import {
   Plus,
   ZoomIn,
 } from 'lucide-react'
-import type { Photo } from '../../types'
 import { formatTimeAgo } from '../../lib/utils'
 import { PhotoUpload } from './PhotoUpload'
+import { PhotosSkeleton } from '../ui/PageSkeletons'
+import { LazyImage } from '../ui/LazyImage'
+import { usePhotos } from '../../hooks/usePhotos'
 import { useIdentity } from '../../hooks/useIdentity'
 
-interface PhotoWallProps {
-  photos: Photo[]
-  loading: boolean
-  uploading: boolean
-  onUpload: (file: File, caption: string) => void
-  onDelete: (photo: Photo) => void
-  onUpdateCaption: (photoId: number, caption: string) => void
-}
-
-export function PhotoWall({
-  photos,
-  loading,
-  uploading,
-  onUpload,
-  onDelete,
-  onUpdateCaption,
-}: PhotoWallProps) {
+export function PhotoWall() {
+  const { photos, loading, uploading, uploadPhoto, deletePhoto, updateCaption } =
+    usePhotos()
+  const { identity } = useIdentity()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showUpload, setShowUpload] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -41,7 +30,6 @@ export function PhotoWall({
   const [dragStartX, setDragStartX] = useState<number | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { identity } = useIdentity()
 
   const currentPhoto = photos[currentIndex]
 
@@ -92,7 +80,7 @@ export function PhotoWall({
 
   const handleDelete = () => {
     if (currentPhoto) {
-      onDelete(currentPhoto)
+      deletePhoto(currentPhoto)
       setShowDeleteConfirm(false)
       if (currentIndex >= photos.length - 1 && currentIndex > 0) {
         setCurrentIndex(currentIndex - 1)
@@ -109,18 +97,18 @@ export function PhotoWall({
 
   const saveCaption = async () => {
     if (currentPhoto) {
-      await onUpdateCaption(currentPhoto.id, captionInput)
+      await updateCaption(currentPhoto.id, captionInput)
       setEditingCaption(false)
     }
   }
 
+  const handleUpload = (file: File, caption: string) => {
+    if (!identity) return
+    return uploadPhoto(file, caption, identity)
+  }
+
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="w-12 h-12 border-4 border-sakura/30 border-t-sakura rounded-full animate-spin mb-4" />
-        <p className="text-gray-500">加载照片中...</p>
-      </div>
-    )
+    return <PhotosSkeleton />
   }
 
   if (photos.length === 0) {
@@ -142,7 +130,7 @@ export function PhotoWall({
         <PhotoUpload
           isOpen={showUpload}
           onClose={() => setShowUpload(false)}
-          onUpload={onUpload}
+          onUpload={handleUpload}
           uploading={uploading}
           identity={identity || 'he'}
         />
@@ -186,11 +174,13 @@ export function PhotoWall({
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="relative"
           >
-            <img
-              src={currentPhoto?.public_url}
+            <LazyImage
+              src={currentPhoto?.public_url || ''}
               alt={currentPhoto?.caption || '照片'}
-              className="w-full h-auto max-h-[60vh] object-contain"
-              draggable={false}
+              className="w-full h-auto min-h-[300px] flex items-center justify-center"
+              aspectRatio="4/3"
+              objectFit="contain"
+              blurPlaceholder={currentPhoto?.thumbnail}
             />
 
             {currentIndex > 0 && (
@@ -423,7 +413,7 @@ export function PhotoWall({
       <PhotoUpload
         isOpen={showUpload}
         onClose={() => setShowUpload(false)}
-        onUpload={onUpload}
+        onUpload={handleUpload}
         uploading={uploading}
         identity={identity || 'he'}
       />

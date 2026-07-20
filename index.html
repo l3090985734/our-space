@@ -5,9 +5,99 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#FFB7C5" />
+    <meta name="description" content="一个只属于两个人的小世界 💗" />
+    <meta property="og:title" content="我们的空间" />
+    <meta property="og:description" content="一个只属于两个人的小世界 💗" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="我们的空间" />
+    <meta name="twitter:description" content="一个只属于两个人的小世界 💗" />
     <title>我们的空间</title>
+    <style>
+      #splash {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(to bottom, #ffe4e9, #ffffff);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.6s ease-out;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      #splash *,
+      #splash *::before,
+      #splash *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      #splash.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #splash .splash-heart {
+        width: 64px;
+        height: 64px;
+        color: #ff8fa3;
+        animation: splash-heartbeat 1.2s ease-in-out infinite;
+        margin-bottom: 16px;
+      }
+
+      #splash .splash-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: #c94c6a;
+        margin-bottom: 8px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      #splash .splash-subtitle {
+        font-size: 14px;
+        color: #9ca3af;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      #splash .splash-spinner {
+        margin-top: 32px;
+        width: 28px;
+        height: 28px;
+        border: 3px solid rgba(255, 143, 163, 0.3);
+        border-top-color: #ff8fa3;
+        border-radius: 50%;
+        animation: splash-spin 0.8s linear infinite;
+      }
+
+      @keyframes splash-heartbeat {
+        0%, 100% { transform: scale(1); }
+        25% { transform: scale(1.15); }
+        50% { transform: scale(1); }
+        75% { transform: scale(1.1); }
+      }
+
+      @keyframes splash-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash">
+      <svg class="splash-heart" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+      </svg>
+      <div class="splash-title">我们的空间</div>
+      <div class="splash-subtitle">一个只属于两个人的小世界 💗</div>
+      <div class="splash-spinner"></div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

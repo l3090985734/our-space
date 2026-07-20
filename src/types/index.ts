@@ -16,6 +16,7 @@ export interface Photo {
   sort_order: number
   created_at: string
   public_url?: string
+  thumbnail?: string
 }
 
 export interface Countdown {
@@ -45,4 +46,15 @@ export interface Wish {
 
 export interface AppSettings {
   anniversary_date: string
+}
+
+export interface TimeCapsule {
+  id: number
+  title: string
+  content: string
+  image_url?: string
+  created_by: Identity
+  unlock_at: string
+  created_at: string
+  is_unlocked?: boolean
 }

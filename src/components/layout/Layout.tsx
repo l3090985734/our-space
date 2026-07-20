@@ -2,8 +2,11 @@ import { Outlet } from 'react-router-dom'
 import { BottomNav } from './BottomNav'
 import { PullToRefresh } from './PullToRefresh'
 import { triggerRefresh } from '../../lib/refreshEvent'
+import { useSwipeNav } from '../../hooks/useSwipeNav'
 
 export function Layout() {
+  useSwipeNav(true)
+
   const handleRefresh = async () => {
     triggerRefresh()
     await new Promise((r) => setTimeout(r, 800))

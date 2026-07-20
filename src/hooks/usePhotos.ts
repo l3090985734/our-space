@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { compressImage } from '../lib/utils'
+import { compressImage, generateThumbnail } from '../lib/utils'
 import { demoStorage, isDemoMode } from '../lib/mockStorage'
 import { onRefresh } from '../lib/refreshEvent'
 import type { Photo, Identity } from '../types'
@@ -62,23 +62,26 @@ export function usePhotos() {
         if (isDemoMode()) {
           await new Promise((r) => setTimeout(r, 500))
           const compressedBlob = await compressImage(file)
+          const thumbnail = await generateThumbnail(compressedBlob)
           const compressedUrl = await new Promise<string>((resolve) => {
             const reader2 = new FileReader()
             reader2.onload = () => resolve(reader2.result as string)
             reader2.readAsDataURL(compressedBlob)
           })
           const newPhoto = demoStorage.addPhoto(
-            `demo/${Date.now()}.jpg`,
+            `demo/${Date.now()}.webp`,
             caption,
             uploadedBy,
-            compressedUrl
+            compressedUrl,
+            thumbnail
           )
           setPhotos((prev) => [newPhoto, ...prev])
           return
         }
 
         const compressedBlob = await compressImage(file)
-        const fileExt = 'jpg'
+        const thumbnail = await generateThumbnail(compressedBlob)
+        const fileExt = 'webp'
         const fileName = `${Date.now()}_${Math.random()
           .toString(36)
           .substring(2)}.${fileExt}`
@@ -87,7 +90,7 @@ export function usePhotos() {
         const { error: uploadError } = await supabase.storage
           .from('photos')
           .upload(filePath, compressedBlob, {
-            contentType: 'image/jpeg',
+            contentType: 'image/webp',
           })
 
         if (uploadError) throw uploadError
@@ -96,6 +99,7 @@ export function usePhotos() {
           storage_path: filePath,
           caption,
           uploaded_by: uploadedBy,
+          thumbnail,
         })
 
         if (dbError) throw dbError

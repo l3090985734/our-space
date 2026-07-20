@@ -4,6 +4,7 @@ import { Plus, Check, Edit2, Trash2 } from 'lucide-react'
 import { WishEditor } from './WishEditor'
 import { useWishes } from '../../hooks/useWishes'
 import type { Wish } from '../../types'
+import { WishesSkeleton } from '../ui/PageSkeletons'
 
 export function WishList() {
   const { wishes, loading, createWish, updateWish, toggleWish, deleteWish } = useWishes()
@@ -45,12 +46,7 @@ export function WishList() {
   const completedCount = wishes.filter((w) => w.completed).length
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="w-12 h-12 border-4 border-sakura/30 border-t-sakura rounded-full animate-spin mb-4" />
-        <p className="text-gray-500">加载中...</p>
-      </div>
-    )
+    return <WishesSkeleton />
   }
 
   return (

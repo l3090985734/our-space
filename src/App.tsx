@@ -1,17 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
-import { HomePage } from './components/home/HomePage'
-import { PhotoWall } from './components/photos/PhotoWall'
-import { NoteList } from './components/notes/NoteList'
-import { GoalsPage } from './components/goals/GoalsPage'
-import { TimelineList } from './components/timeline/TimelineList'
 import { IdentityPicker } from './components/identity/IdentityPicker'
 import { PasswordPage } from './components/auth/PasswordPage'
+import { ToastProvider } from './components/ui/Toast'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
+import { HomeSkeleton, NotesSkeleton, PhotosSkeleton, TimelineSkeleton, CountdownSkeleton } from './components/ui/PageSkeletons'
 import { useIdentity } from './hooks/useIdentity'
-import { usePhotos } from './hooks/usePhotos'
 import { isDemoMode, initDemoData } from './lib/mockStorage'
 import { ACCESS_PASSWORD } from './lib/config'
+
+const HomePage = lazy(() => import('./components/home/HomePage').then(m => ({ default: m.HomePage })))
+const PhotoWall = lazy(() => import('./components/photos/PhotoWall').then(m => ({ default: m.PhotoWall })))
+const NotesPage = lazy(() => import('./components/notes/NotesPage').then(m => ({ default: m.NotesPage })))
+const GoalsPage = lazy(() => import('./components/goals/GoalsPage').then(m => ({ default: m.GoalsPage })))
+const TimelineList = lazy(() => import('./components/timeline/TimelineList').then(m => ({ default: m.TimelineList })))
 
 function DemoBanner() {
   const [visible, setVisible] = useState(true)
@@ -33,8 +36,6 @@ function DemoBanner() {
 
 function AppContent() {
   const { identity, isLoading, selectIdentity } = useIdentity()
-  const { photos, loading, uploading, uploadPhoto, deletePhoto, updateCaption } =
-    usePhotos()
   const [authenticated, setAuthenticated] = useState(() => {
     return sessionStorage.getItem('our-space-authed') === '1'
   })
@@ -79,23 +80,46 @@ function AppContent() {
       <div className={isDemoMode() ? 'pt-6' : ''}>
         <Routes>
           <Route element={<Layout />}>
-            <Route path="/" element={<HomePage />} />
+            <Route
+              path="/"
+              element={
+                <Suspense fallback={<div className="p-4"><HomeSkeleton /></div>}>
+                  <HomePage />
+                </Suspense>
+              }
+            />
             <Route
               path="/photos"
               element={
-                <PhotoWall
-                  photos={photos}
-                  loading={loading}
-                  uploading={uploading}
-                  onUpload={(file, caption) => uploadPhoto(file, caption, identity)}
-                  onDelete={deletePhoto}
-                  onUpdateCaption={updateCaption}
-                />
+                <Suspense fallback={<div className="p-4"><PhotosSkeleton /></div>}>
+                  <PhotoWall />
+                </Suspense>
               }
             />
-            <Route path="/timeline" element={<TimelineList />} />
-            <Route path="/notes" element={<NoteList />} />
-            <Route path="/countdowns" element={<GoalsPage />} />
+            <Route
+              path="/timeline"
+              element={
+                <Suspense fallback={<div className="p-4"><TimelineSkeleton /></div>}>
+                  <TimelineList />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/notes"
+              element={
+                <Suspense fallback={<div className="p-4"><NotesSkeleton /></div>}>
+                  <NotesPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/countdowns"
+              element={
+                <Suspense fallback={<div className="p-4"><CountdownSkeleton /></div>}>
+                  <GoalsPage />
+                </Suspense>
+              }
+            />
           </Route>
         </Routes>
       </div>
@@ -104,5 +128,11 @@ function AppContent() {
 }
 
 export default function App() {
-  return <AppContent />
+  return (
+    <ErrorBoundary>
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
+    </ErrorBoundary>
+  )
 }

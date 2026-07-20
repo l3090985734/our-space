@@ -1,26 +1,47 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Heart, Lock } from 'lucide-react'
+import { sha256 } from '../../lib/utils'
 
 interface PasswordPageProps {
   password: string
   onSuccess: () => void
 }
 
+function isHash(str: string): boolean {
+  return /^[a-f0-9]{64}$/i.test(str)
+}
+
 export function PasswordPage({ password, onSuccess }: PasswordPageProps) {
   const [input, setInput] = useState('')
   const [error, setError] = useState(false)
   const [shake, setShake] = useState(false)
+  const [verifying, setVerifying] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (input === password) {
-      onSuccess()
-    } else {
-      setError(true)
-      setShake(true)
-      setInput('')
-      setTimeout(() => setShake(false), 500)
+    if (verifying) return
+
+    setVerifying(true)
+    try {
+      let valid = false
+      if (isHash(password)) {
+        const inputHash = await sha256(input)
+        valid = inputHash.toLowerCase() === password.toLowerCase()
+      } else {
+        valid = input === password
+      }
+
+      if (valid) {
+        onSuccess()
+      } else {
+        setError(true)
+        setShake(true)
+        setInput('')
+        setTimeout(() => setShake(false), 500)
+      }
+    } finally {
+      setVerifying(false)
     }
   }
 

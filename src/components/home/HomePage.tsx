@@ -8,6 +8,8 @@ import { useNotes } from '../../hooks/useNotes'
 import { useIdentity } from '../../hooks/useIdentity'
 import { useSettings } from '../../hooks/useSettings'
 import { calculateDaysLeft, calculateDaysSince, formatTimeAgo } from '../../lib/utils'
+import { Skeleton, SkeletonCard } from '../ui/Skeleton'
+import { LazyImage } from '../ui/LazyImage'
 
 export function HomePage() {
   const { countdowns, loading: countdownsLoading } = useCountdowns()
@@ -93,9 +95,7 @@ export function HomePage() {
         transition={{ delay: 0.1 }}
       >
         {countdownsLoading ? (
-          <div className="bg-white rounded-2xl p-6 shadow-sm h-32 flex items-center justify-center">
-            <div className="w-8 h-8 border-3 border-sakura/30 border-t-sakura rounded-full animate-spin" />
-          </div>
+          <SkeletonCard className="h-32" />
         ) : nearestCountdown ? (
           <Link to="/countdowns" className="block">
             <div className="bg-gradient-to-br from-sakura to-sakura-deep rounded-2xl p-6 text-white relative overflow-hidden">
@@ -151,10 +151,7 @@ export function HomePage() {
         {photosLoading ? (
           <div className="grid grid-cols-3 gap-2">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="aspect-square rounded-xl bg-gray-100 animate-pulse"
-              />
+              <Skeleton key={i} className="aspect-square rounded-xl" />
             ))}
           </div>
         ) : recentPhotos.length > 0 ? (
@@ -162,10 +159,12 @@ export function HomePage() {
             {recentPhotos.map((photo) => (
               <Link key={photo.id} to="/photos">
                 <div className="aspect-square rounded-xl overflow-hidden bg-gray-100">
-                  <img
-                    src={photo.public_url}
+                  <LazyImage
+                    src={photo.public_url || ''}
                     alt={photo.caption || '照片'}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full"
+                    aspectRatio="1/1"
+                    blurPlaceholder={photo.thumbnail}
                   />
                 </div>
               </Link>
@@ -211,10 +210,7 @@ export function HomePage() {
         {notesLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="bg-white rounded-2xl p-4 shadow-sm h-20 animate-pulse"
-              />
+              <SkeletonCard key={i} className="h-20" />
             ))}
           </div>
         ) : recentNotes.length > 0 ? (
