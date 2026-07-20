@@ -72,7 +72,7 @@ export function HomePage() {
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <Edit3 className="w-4 h-4 text-gray-400" />
         </div>
-        <p className="text-sm text-gray-500 mb-1">我们已经在一起</p>
+        <p className="text-sm text-gray-500 mb-1">认识已经</p>
         <div className="flex items-baseline justify-center gap-1.5">
           <motion.span
             key={daysTogether}
