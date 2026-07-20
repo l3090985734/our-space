@@ -23,11 +23,17 @@ export function PasswordPage({ password, onSuccess }: PasswordPageProps) {
     if (verifying) return
 
     setVerifying(true)
+    setError(false)
     try {
       let valid = false
       if (isHash(password)) {
-        const inputHash = await sha256(input)
-        valid = inputHash.toLowerCase() === password.toLowerCase()
+        try {
+          const inputHash = await sha256(input)
+          valid = inputHash.toLowerCase() === password.toLowerCase()
+        } catch {
+          // crypto.subtle 不可用时，回退到明文对比
+          valid = input === password
+        }
       } else {
         valid = input === password
       }
