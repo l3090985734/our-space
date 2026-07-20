@@ -178,13 +178,10 @@ export function PhotoWall() {
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="relative"
           >
-            <LazyImage
+            <img
               src={currentPhoto?.public_url || ''}
               alt={currentPhoto?.caption || '照片'}
-              className="w-full h-auto min-h-[300px] flex items-center justify-center"
-              aspectRatio="4/3"
-              objectFit="contain"
-              blurPlaceholder={currentPhoto?.thumbnail}
+              className="w-full h-auto min-h-[300px] object-contain"
             />
 
             {currentIndex > 0 && (
