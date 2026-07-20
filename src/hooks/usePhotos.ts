@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/utils'
 import { demoStorage, isDemoMode } from '../lib/mockStorage'
+import { onRefresh } from '../lib/refreshEvent'
 import type { Photo, Identity } from '../types'
 
 export function usePhotos() {
@@ -49,6 +50,7 @@ export function usePhotos() {
 
   useEffect(() => {
     fetchPhotos()
+    return onRefresh(fetchPhotos)
   }, [fetchPhotos])
 
   const uploadPhoto = useCallback(

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { demoStorage, isDemoMode } from '../lib/mockStorage'
+import { onRefresh } from '../lib/refreshEvent'
 import type { Wish } from '../types'
 
 export function useWishes() {
@@ -37,6 +38,7 @@ export function useWishes() {
 
   useEffect(() => {
     fetchWishes()
+    return onRefresh(fetchWishes)
   }, [fetchWishes])
 
   const createWish = useCallback(

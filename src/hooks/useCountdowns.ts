@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { demoStorage, isDemoMode } from '../lib/mockStorage'
+import { onRefresh } from '../lib/refreshEvent'
 import type { Countdown } from '../types'
 
 export function useCountdowns() {
@@ -43,6 +44,7 @@ export function useCountdowns() {
 
   useEffect(() => {
     fetchCountdowns()
+    return onRefresh(fetchCountdowns)
   }, [fetchCountdowns])
 
   const createCountdown = useCallback(

@@ -35,7 +35,9 @@ function AppContent() {
   const { identity, isLoading, selectIdentity } = useIdentity()
   const { photos, loading, uploading, uploadPhoto, deletePhoto, updateCaption } =
     usePhotos()
-  const [authenticated, setAuthenticated] = useState(false)
+  const [authenticated, setAuthenticated] = useState(() => {
+    return sessionStorage.getItem('our-space-authed') === '1'
+  })
 
   useEffect(() => {
     if (isDemoMode()) {
@@ -44,6 +46,11 @@ function AppContent() {
   }, [])
 
   const needPassword = ACCESS_PASSWORD && ACCESS_PASSWORD.length > 0
+
+  const handleAuthSuccess = () => {
+    sessionStorage.setItem('our-space-authed', '1')
+    setAuthenticated(true)
+  }
 
   if (isLoading) {
     return (
@@ -54,7 +61,7 @@ function AppContent() {
   }
 
   if (needPassword && !authenticated) {
-    return <PasswordPage password={ACCESS_PASSWORD} onSuccess={() => setAuthenticated(true)} />
+    return <PasswordPage password={ACCESS_PASSWORD} onSuccess={handleAuthSuccess} />
   }
 
   if (!identity) {

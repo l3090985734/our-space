@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { demoStorage, isDemoMode } from '../lib/mockStorage'
+import { onRefresh } from '../lib/refreshEvent'
 import type { TimelineEvent } from '../types'
 
 export function useTimeline() {
@@ -36,6 +37,7 @@ export function useTimeline() {
 
   useEffect(() => {
     fetchEvents()
+    return onRefresh(fetchEvents)
   }, [fetchEvents])
 
   const createEvent = useCallback(

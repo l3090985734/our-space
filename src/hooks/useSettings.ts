@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { demoStorage, isDemoMode } from '../lib/mockStorage'
+import { onRefresh } from '../lib/refreshEvent'
 import type { AppSettings } from '../types'
 
 const SETTINGS_ID = 1
@@ -52,6 +53,7 @@ export function useSettings() {
 
   useEffect(() => {
     fetchSettings()
+    return onRefresh(fetchSettings)
   }, [fetchSettings])
 
   const updateAnniversary = useCallback(async (date: string) => {

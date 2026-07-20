@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { demoStorage, isDemoMode } from '../lib/mockStorage'
+import { onRefresh } from '../lib/refreshEvent'
 import type { Note, Identity } from '../types'
 
 const PAGE_SIZE = 20
@@ -78,6 +79,11 @@ export function useNotes() {
 
   useEffect(() => {
     fetchNotes(0, false)
+    return onRefresh(() => {
+      pageRef.current = 0
+      setHasMore(true)
+      fetchNotes(0, false)
+    })
   }, [fetchNotes])
 
   const loadMore = useCallback(() => {
