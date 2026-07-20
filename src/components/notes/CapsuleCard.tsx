@@ -7,7 +7,6 @@ interface CapsuleCardProps {
   capsule: TimeCapsule
   isUnlocked: boolean
   currentIdentity: Identity | null
-  onUnlock?: () => void
   getNow: () => Date
 }
 
@@ -37,7 +36,6 @@ export function CapsuleCard({
   capsule,
   isUnlocked: initialUnlocked,
   currentIdentity,
-  onUnlock,
   getNow,
 }: CapsuleCardProps) {
   const [showContent, setShowContent] = useState(false)
@@ -65,11 +63,6 @@ export function CapsuleCard({
     const timer = setInterval(() => {
       const newTimeLeft = calculateTimeLeft(capsule.unlock_at, getNow())
       setTimeLeft(newTimeLeft)
-
-      if (newTimeLeft.total <= 0) {
-        clearInterval(timer)
-        setHasNewUnlocked(true)
-      }
     }, 1000 * 30)
 
     return () => clearInterval(timer)
@@ -85,7 +78,6 @@ export function CapsuleCard({
       setTimeout(() => {
         setShowContent(true)
         setIsAnimating(false)
-        onUnlock?.()
       }, 2000)
     } else {
       setShowContent(false)
@@ -343,7 +335,7 @@ export function CapsuleCard({
                     正在为你拆信...
                   </motion.p>
                   <p className="text-gray-500 text-sm">
-                    来自过去的心意，马上送达 �
+                    来自过去的心意，马上送达
                   </p>
                 </div>
               </motion.div>

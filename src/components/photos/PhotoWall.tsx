@@ -55,6 +55,9 @@ export function PhotoWall() {
     if (dragStartX === null) return
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
     setDragOffset(clientX - dragStartX)
+    if ('touches' in e) {
+      e.preventDefault()
+    }
   }
 
   const handleDragEnd = () => {
@@ -80,9 +83,10 @@ export function PhotoWall() {
 
   const handleDelete = () => {
     if (currentPhoto) {
+      const willBeLast = currentIndex >= photos.length - 1 && currentIndex > 0
       deletePhoto(currentPhoto)
       setShowDeleteConfirm(false)
-      if (currentIndex >= photos.length - 1 && currentIndex > 0) {
+      if (willBeLast) {
         setCurrentIndex(currentIndex - 1)
       }
     }

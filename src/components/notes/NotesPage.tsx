@@ -36,12 +36,8 @@ export function NotesPage() {
         ))}
       </div>
 
-      <div className={activeTab === 'notes' ? 'block' : 'hidden'}>
-        <NoteList />
-      </div>
-      <div className={activeTab === 'capsules' ? 'block' : 'hidden'}>
-        <CapsuleList />
-      </div>
+      {activeTab === 'notes' && <NoteList />}
+      {activeTab === 'capsules' && <CapsuleList />}
     </div>
   )
 }

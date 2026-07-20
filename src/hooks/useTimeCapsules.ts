@@ -20,11 +20,7 @@ export function useTimeCapsules() {
         return new Date(data)
       }
     } catch {
-      // RPC 不存在的话，用一个简单查询估算
-    }
-    const { data } = await supabase.from('time_capsules').select('created_at').limit(1)
-    if (data && data.length > 0) {
-      return new Date(data[0].created_at)
+      // RPC 不存在的话，使用本地时间
     }
     return new Date()
   }, [])

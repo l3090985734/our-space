@@ -91,7 +91,7 @@ export function generateThumbnail(
       resolve(canvas.toDataURL('image/jpeg', quality))
     }
     img.onerror = () => reject(new Error('Failed to load image'))
-    img.src = file instanceof File ? URL.createObjectURL(file) : URL.createObjectURL(file)
+    img.src = URL.createObjectURL(file)
   })
 }
 

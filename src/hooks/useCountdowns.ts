@@ -16,14 +16,7 @@ export function useCountdowns() {
 
       if (isDemoMode()) {
         await new Promise((r) => setTimeout(r, 300))
-        const data = demoStorage.getCountdowns()
-        setCountdowns(
-          [...data].sort(
-            (a, b) =>
-              new Date(a.target_date).getTime() -
-              new Date(b.target_date).getTime()
-          )
-        )
+        setCountdowns(demoStorage.getCountdowns())
         return
       }
 
@@ -54,7 +47,7 @@ export function useCountdowns() {
 
         if (isDemoMode()) {
           const newCountdown = demoStorage.addCountdown(title, targetDate)
-          setCountdowns(demoStorage.getCountdowns())
+          setCountdowns([...demoStorage.getCountdowns()])
           return newCountdown
         }
 

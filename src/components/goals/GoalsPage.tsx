@@ -36,12 +36,8 @@ export function GoalsPage() {
         ))}
       </div>
 
-      <div className={activeTab === 'countdowns' ? 'block' : 'hidden'}>
-        <CountdownList />
-      </div>
-      <div className={activeTab === 'wishes' ? 'block' : 'hidden'}>
-        <WishList />
-      </div>
+      {activeTab === 'countdowns' && <CountdownList />}
+      {activeTab === 'wishes' && <WishList />}
     </div>
   )
 }

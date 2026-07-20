@@ -23,6 +23,7 @@ export function NoteList() {
   const { identity } = useIdentity()
   const [showEditor, setShowEditor] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [replyingNoteId, setReplyingNoteId] = useState<number | null>(null)
   const observerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -53,11 +54,14 @@ export function NoteList() {
   }
 
   const handleReply = async (noteId: number, content: string) => {
-    if (!identity) return
+    if (!identity || replyingNoteId !== null) return
+    setReplyingNoteId(noteId)
     try {
       await createNote(content, identity, noteId)
     } catch (e) {
       console.error('Reply failed:', e)
+    } finally {
+      setReplyingNoteId(null)
     }
   }
 
@@ -112,6 +116,7 @@ export function NoteList() {
                 isExpanded={expandedNoteId === note.id}
                 onToggleExpand={() => toggleExpand(note.id)}
                 onReply={(content) => handleReply(note.id, content)}
+                replyLoading={replyingNoteId === note.id}
               />
             ))}
           </AnimatePresence>

@@ -28,17 +28,15 @@ export function usePhotos() {
 
       if (error) throw error
 
-      const photosWithUrls = await Promise.all(
-        (data || []).map(async (photo: any) => {
-          const { data: urlData } = supabase.storage
-            .from('photos')
-            .getPublicUrl(photo.storage_path)
-          return {
-            ...photo,
-            public_url: urlData.publicUrl,
-          }
-        })
-      )
+      const photosWithUrls = (data || []).map((photo: any) => {
+        const { data: urlData } = supabase.storage
+          .from('photos')
+          .getPublicUrl(photo.storage_path)
+        return {
+          ...photo,
+          public_url: urlData.publicUrl,
+        }
+      })
 
       setPhotos(photosWithUrls)
     } catch (e: any) {

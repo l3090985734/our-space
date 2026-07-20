@@ -88,7 +88,7 @@ export function PhotoUpload({
               >
                 <ImageIcon className="w-12 h-12 text-sakura mb-4" />
                 <p className="text-gray-600 mb-2">点击选择照片</p>
-                <p className="text-sm text-gray-400">支持 JPG、PNG 格式</p>
+                <p className="text-sm text-gray-400">支持 JPG、PNG、GIF 等格式，自动压缩为 WebP</p>
               </div>
             ) : (
               <div className="mb-6">

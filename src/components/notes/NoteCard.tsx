@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, MessageCircle, Send } from 'lucide-react'
 import type { Note } from '../../types'
@@ -10,6 +10,7 @@ interface NoteCardProps {
   isExpanded: boolean
   onToggleExpand: () => void
   onReply: (content: string) => void
+  replyLoading?: boolean
 }
 
 export function NoteCard({
@@ -18,12 +19,20 @@ export function NoteCard({
   isExpanded,
   onToggleExpand,
   onReply,
+  replyLoading,
 }: NoteCardProps) {
   const [showReplyInput, setShowReplyInput] = useState(false)
   const [replyContent, setReplyContent] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (showReplyInput && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [showReplyInput])
 
   const handleSubmitReply = () => {
-    if (!replyContent.trim()) return
+    if (!replyContent.trim() || replyLoading) return
     onReply(replyContent.trim())
     setReplyContent('')
     setShowReplyInput(false)
@@ -91,6 +100,7 @@ export function NoteCard({
           >
             <div className="mt-4 flex gap-2">
               <input
+                ref={inputRef}
                 type="text"
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
@@ -102,10 +112,14 @@ export function NoteCard({
               />
               <button
                 onClick={handleSubmitReply}
-                disabled={!replyContent.trim()}
+                disabled={!replyContent.trim() || replyLoading}
                 className="w-10 h-10 rounded-full bg-sakura text-white flex items-center justify-center disabled:opacity-50 hover:bg-sakura-deep transition-colors"
               >
-                <Send className="w-4 h-4" />
+                {replyLoading ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </button>
             </div>
           </motion.div>
