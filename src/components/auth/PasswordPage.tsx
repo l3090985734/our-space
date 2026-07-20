@@ -24,31 +24,23 @@ export function PasswordPage({ password, onSuccess }: PasswordPageProps) {
 
     setVerifying(true)
     setError(false)
-    try {
-      let valid = false
-      if (isHash(password)) {
-        try {
-          const inputHash = await sha256(input)
-          valid = inputHash.toLowerCase() === password.toLowerCase()
-        } catch {
-          // crypto.subtle 不可用时，回退到明文对比
-          valid = input === password
-        }
-      } else {
-        valid = input === password
-      }
-
-      if (valid) {
-        onSuccess()
-      } else {
-        setError(true)
-        setShake(true)
-        setInput('')
-        setTimeout(() => setShake(false), 500)
-      }
-    } finally {
-      setVerifying(false)
+    let valid = false
+    if (isHash(password)) {
+      const inputHash = await sha256(input)
+      valid = inputHash.toLowerCase() === password.toLowerCase()
+    } else {
+      valid = input === password
     }
+
+    if (valid) {
+      onSuccess()
+    } else {
+      setError(true)
+      setShake(true)
+      setInput('')
+      setTimeout(() => setShake(false), 500)
+    }
+    setVerifying(false)
   }
 
   return (
