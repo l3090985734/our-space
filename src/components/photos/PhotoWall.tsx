@@ -13,7 +13,6 @@ import {
 import { formatTimeAgo } from '../../lib/utils'
 import { PhotoUpload } from './PhotoUpload'
 import { PhotosSkeleton } from '../ui/PageSkeletons'
-import { LazyImage } from '../ui/LazyImage'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useIdentity } from '../../hooks/useIdentity'
 
