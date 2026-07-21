@@ -3,6 +3,45 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Calendar, Save } from 'lucide-react'
 import type { TimelineEvent } from '../../types'
 
+const TIMELINE_DRAFT_KEY = 'our-space-timeline-draft'
+
+interface TimelineDraft {
+  title: string
+  eventDate: string
+  description: string
+}
+
+function loadTimelineDraft(): TimelineDraft {
+  try {
+    const data = localStorage.getItem(TIMELINE_DRAFT_KEY)
+    return data
+      ? JSON.parse(data)
+      : { title: '', eventDate: '', description: '' }
+  } catch {
+    return { title: '', eventDate: '', description: '' }
+  }
+}
+
+function saveTimelineDraft(draft: TimelineDraft) {
+  try {
+    if (draft.title || draft.eventDate || draft.description) {
+      localStorage.setItem(TIMELINE_DRAFT_KEY, JSON.stringify(draft))
+    } else {
+      localStorage.removeItem(TIMELINE_DRAFT_KEY)
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function clearTimelineDraft() {
+  try {
+    localStorage.removeItem(TIMELINE_DRAFT_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 interface TimelineEditorProps {
   isOpen: boolean
   onClose: () => void
@@ -23,22 +62,35 @@ export function TimelineEditor({
   const [description, setDescription] = useState('')
 
   useEffect(() => {
+    if (!isOpen) return
     if (editing) {
       setTitle(editing.title)
       setEventDate(editing.event_date)
       setDescription(editing.description)
     } else {
-      setTitle('')
-      setEventDate('')
-      setDescription('')
+      const draft = loadTimelineDraft()
+      setTitle(draft.title)
+      setEventDate(draft.eventDate)
+      setDescription(draft.description)
     }
   }, [editing, isOpen])
 
+  useEffect(() => {
+    if (isOpen && !editing) {
+      saveTimelineDraft({ title, eventDate, description })
+    }
+  }, [title, eventDate, description, isOpen, editing])
+
   const handleSubmit = async () => {
     if (!title.trim() || !eventDate) return
+    if (!editing) {
+      clearTimelineDraft()
+    }
     await onSubmit(title.trim(), eventDate, description.trim())
     onClose()
   }
+
+  const hasDraft = !editing && (title || eventDate || description)
 
   return (
     <AnimatePresence>
@@ -59,15 +111,38 @@ export function TimelineEditor({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-700">
-                {editing ? '编辑故事' : '添加故事'}
-              </h2>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-gray-700">
+                  {editing ? '编辑故事' : '添加故事'}
+                </h2>
+                {hasDraft && (
+                  <span className="text-xs text-sakura-deep flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sakura-deep animate-pulse" />
+                    草稿已保存
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                {hasDraft && (
+                  <button
+                    onClick={() => {
+                      clearTimelineDraft()
+                      setTitle('')
+                      setEventDate('')
+                      setDescription('')
+                    }}
+                    className="px-2 py-1 rounded-full hover:bg-gray-100 transition-colors text-xs text-gray-500 hover:text-red-500"
+                  >
+                    清除草稿
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-5">

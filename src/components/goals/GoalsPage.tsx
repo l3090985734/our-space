@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CountdownList } from '../countdowns/CountdownList'
 import { WishList } from '../wishes/WishList'
@@ -6,7 +7,16 @@ import { WishList } from '../wishes/WishList'
 type Tab = 'countdowns' | 'wishes'
 
 export function GoalsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('countdowns')
+  const location = useLocation()
+  const initialTab = (location.state as { tab?: Tab })?.tab || 'countdowns'
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
+
+  useEffect(() => {
+    const tab = (location.state as { tab?: Tab })?.tab
+    if (tab) {
+      setActiveTab(tab)
+    }
+  }, [location.state])
 
   const tabs = [
     { key: 'countdowns' as const, label: '倒计时' },

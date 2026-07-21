@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, Sparkles, Heart } from 'lucide-react'
+import { Clock, Sparkles, Heart, Trash2, X } from 'lucide-react'
 import type { TimeCapsule, Identity } from '../../types'
 
 interface CapsuleCardProps {
@@ -8,6 +8,7 @@ interface CapsuleCardProps {
   isUnlocked: boolean
   currentIdentity: Identity | null
   getNow: () => Date
+  onDelete?: (id: number) => void
 }
 
 interface TimeLeft {
@@ -37,6 +38,7 @@ export function CapsuleCard({
   isUnlocked: initialUnlocked,
   currentIdentity,
   getNow,
+  onDelete,
 }: CapsuleCardProps) {
   const [showContent, setShowContent] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
@@ -44,6 +46,8 @@ export function CapsuleCard({
     calculateTimeLeft(capsule.unlock_at, getNow())
   )
   const [hasNewUnlocked, setHasNewUnlocked] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const isOwn = capsule.created_by === currentIdentity
   const isHe = capsule.created_by === 'he'
@@ -130,8 +134,19 @@ export function CapsuleCard({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
-            className="relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-xl transition-shadow border border-gray-100"
+            className="relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-xl transition-shadow border border-gray-100 group"
           >
+            {isOwn && onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowDeleteConfirm(true)
+                }}
+                className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-white/90 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all opacity-60 hover:opacity-100 shadow-sm"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <div className="relative p-5">
               <div className="flex items-start gap-4">
                 <div className="relative flex-shrink-0">
@@ -197,9 +212,15 @@ export function CapsuleCard({
                     )}
                   </div>
 
-                  <h3 className="text-base font-bold text-gray-700 mb-2 truncate">
-                    {capsule.title}
-                  </h3>
+                  {!initialUnlocked && !isOwn ? (
+                    <h3 className="text-base font-bold text-gray-400 mb-2 italic">
+                      神秘信件
+                    </h3>
+                  ) : (
+                    <h3 className="text-base font-bold text-gray-700 mb-2 truncate">
+                      {capsule.title}
+                    </h3>
+                  )}
 
                   {initialUnlocked ? (
                     <motion.div
@@ -350,6 +371,17 @@ export function CapsuleCard({
             transition={{ type: 'spring', damping: 20, stiffness: 200 }}
             className="relative overflow-hidden rounded-2xl bg-white shadow-lg border border-gray-100"
           >
+            {isOwn && onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowDeleteConfirm(true)
+                }}
+                className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-white/80 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <div
               className="h-1.5"
               style={{
@@ -441,6 +473,66 @@ export function CapsuleCard({
                 </span>
               </motion.div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center px-6"
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-700">
+                  确认删除
+                </h3>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-500 mb-6">
+                确定要删除这个时间胶囊吗？删除后无法恢复哦。
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-full font-medium hover:bg-gray-200 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={async () => {
+                    setDeleting(true)
+                    try {
+                      await onDelete?.(capsule.id)
+                      setShowDeleteConfirm(false)
+                    } finally {
+                      setDeleting(false)
+                    }
+                  }}
+                  disabled={deleting}
+                  className="flex-1 py-2.5 bg-red-500 text-white rounded-full font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                >
+                  {deleting ? '删除中...' : '删除'}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

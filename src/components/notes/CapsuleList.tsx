@@ -8,7 +8,7 @@ import { useIdentity } from '../../hooks/useIdentity'
 import { NotesSkeleton } from '../ui/PageSkeletons'
 
 export function CapsuleList() {
-  const { capsules, loading, fetchCapsules, createCapsule, isUnlocked, getNow } =
+  const { capsules, loading, fetchCapsules, createCapsule, deleteCapsule, isUnlocked, getNow } =
     useTimeCapsules()
   const { identity } = useIdentity()
   const [showEditor, setShowEditor] = useState(false)
@@ -125,6 +125,7 @@ export function CapsuleList() {
                   isUnlocked={isUnlocked(capsule)}
                   currentIdentity={identity}
                   getNow={getNow}
+                  onDelete={deleteCapsule}
                 />
               </motion.div>
             ))}

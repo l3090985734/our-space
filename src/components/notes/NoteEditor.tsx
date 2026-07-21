@@ -2,6 +2,36 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Send } from 'lucide-react'
 
+const NOTE_DRAFT_KEY = 'our-space-note-draft'
+
+function loadNoteDraft(): string {
+  try {
+    return localStorage.getItem(NOTE_DRAFT_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+function saveNoteDraft(content: string) {
+  try {
+    if (content) {
+      localStorage.setItem(NOTE_DRAFT_KEY, content)
+    } else {
+      localStorage.removeItem(NOTE_DRAFT_KEY)
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function clearNoteDraft() {
+  try {
+    localStorage.removeItem(NOTE_DRAFT_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 interface NoteEditorProps {
   isOpen: boolean
   onClose: () => void
@@ -17,6 +47,18 @@ export function NoteEditor({
 }: NoteEditorProps) {
   const [content, setContent] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      setContent(loadNoteDraft())
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (isOpen) {
+      saveNoteDraft(content)
+    }
+  }, [content, isOpen])
 
   useEffect(() => {
     if (isOpen && textareaRef.current) {
@@ -35,12 +77,12 @@ export function NoteEditor({
   const handleSubmit = async () => {
     if (!content.trim()) return
     await onSubmit(content.trim())
+    clearNoteDraft()
     setContent('')
     onClose()
   }
 
   const handleClose = () => {
-    setContent('')
     onClose()
   }
 
@@ -63,13 +105,34 @@ export function NoteEditor({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-700">写纸条</h2>
-              <button
-                onClick={handleClose}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-gray-700">写纸条</h2>
+                {content && (
+                  <span className="text-xs text-sakura-deep flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sakura-deep animate-pulse" />
+                    草稿已保存
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                {content && (
+                  <button
+                    onClick={() => {
+                      clearNoteDraft()
+                      setContent('')
+                    }}
+                    className="p-2 rounded-full hover:bg-gray-100 transition-colors text-xs text-gray-500 hover:text-red-500"
+                  >
+                    清除
+                  </button>
+                )}
+                <button
+                  onClick={handleClose}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
             </div>
 
             <textarea

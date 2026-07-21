@@ -116,6 +116,30 @@ export function useTimeCapsules() {
     []
   )
 
+  const deleteCapsule = useCallback(async (id: number) => {
+    try {
+      setError(null)
+
+      if (isDemoMode()) {
+        demoStorage.deleteTimeCapsule(id)
+        setCapsules((prev) => prev.filter((c) => c.id !== id))
+        return
+      }
+
+      const { error } = await supabase
+        .from('time_capsules')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      setCapsules((prev) => prev.filter((c) => c.id !== id))
+    } catch (e: any) {
+      setError(e.message)
+      throw e
+    }
+  }, [])
+
   const isUnlocked = useCallback(
     (capsule: TimeCapsule): boolean => {
       const now = getNow()
@@ -130,6 +154,7 @@ export function useTimeCapsules() {
     error,
     fetchCapsules,
     createCapsule,
+    deleteCapsule,
     isUnlocked,
     getNow,
   }

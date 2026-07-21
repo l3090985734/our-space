@@ -270,6 +270,14 @@ export const demoStorage = {
     return newCapsule
   },
 
+  deleteTimeCapsule(id: number) {
+    const capsules = getFromStorage<TimeCapsule[]>(KEYS.CAPSULES, [])
+    saveToStorage(
+      KEYS.CAPSULES,
+      capsules.filter((c) => c.id !== id)
+    )
+  },
+
   getSettings(): AppSettings {
     return getFromStorage<AppSettings>(KEYS.SETTINGS, {
       anniversary_date: ANNIVERSARY_DATE,

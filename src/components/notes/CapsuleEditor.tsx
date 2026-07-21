@@ -2,6 +2,40 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Send, Calendar, Clock, Sparkles, Gift } from 'lucide-react'
 
+const DRAFT_KEY = 'our-space-capsule-draft'
+
+interface CapsuleDraft {
+  title: string
+  content: string
+  unlockDate: string
+  unlockTime: string
+}
+
+function loadDraft(): CapsuleDraft | null {
+  try {
+    const data = localStorage.getItem(DRAFT_KEY)
+    return data ? JSON.parse(data) : null
+  } catch {
+    return null
+  }
+}
+
+function saveDraft(draft: CapsuleDraft) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+  } catch {
+    // ignore
+  }
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 interface CapsuleEditorProps {
   isOpen: boolean
   onClose: () => void
@@ -23,12 +57,28 @@ export function CapsuleEditor({
 
   useEffect(() => {
     if (isOpen) {
-      const nextMonth = new Date()
-      nextMonth.setMonth(nextMonth.getMonth() + 1)
-      setUnlockDate(nextMonth.toISOString().split('T')[0])
-      setUnlockTime('20:00')
+      const draft = loadDraft()
+      if (draft) {
+        setTitle(draft.title)
+        setContent(draft.content)
+        setUnlockDate(draft.unlockDate)
+        setUnlockTime(draft.unlockTime)
+      } else {
+        const nextMonth = new Date()
+        nextMonth.setMonth(nextMonth.getMonth() + 1)
+        setUnlockDate(nextMonth.toISOString().split('T')[0])
+        setUnlockTime('20:00')
+        setTitle('')
+        setContent('')
+      }
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (isOpen && (title || content || unlockDate)) {
+      saveDraft({ title, content, unlockDate, unlockTime })
+    }
+  }, [title, content, unlockDate, unlockTime, isOpen])
 
   useEffect(() => {
     if (isOpen && textareaRef.current) {
@@ -49,6 +99,7 @@ export function CapsuleEditor({
 
     const unlockAt = new Date(`${unlockDate}T${unlockTime}:00`).toISOString()
     await onSubmit(title.trim(), content.trim(), unlockAt)
+    clearDraft()
     setTitle('')
     setContent('')
     setUnlockDate('')
@@ -56,10 +107,6 @@ export function CapsuleEditor({
   }
 
   const handleClose = () => {
-    setTitle('')
-    setContent('')
-    setUnlockDate('')
-    setUnlockTime('20:00')
     onClose()
   }
 
@@ -120,6 +167,29 @@ export function CapsuleEditor({
               </div>
 
               <div className="space-y-5">
+                {(title || content) && (
+                  <div className="flex items-center justify-between bg-sakura-light/30 rounded-xl px-4 py-2.5 border border-sakura-light/50">
+                    <span className="text-xs text-sakura-deep flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-sakura-deep animate-pulse" />
+                      已自动保存草稿
+                    </span>
+                    <button
+                      onClick={() => {
+                        clearDraft()
+                        setTitle('')
+                        setContent('')
+                        const nextMonth = new Date()
+                        nextMonth.setMonth(nextMonth.getMonth() + 1)
+                        setUnlockDate(nextMonth.toISOString().split('T')[0])
+                        setUnlockTime('20:00')
+                      }}
+                      className="text-xs text-gray-500 hover:text-red-500 transition-colors"
+                    >
+                      清除草稿
+                    </button>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-sakura-deep" />
@@ -157,7 +227,7 @@ export function CapsuleEditor({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-sakura-deep" />
