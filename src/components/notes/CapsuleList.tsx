@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Plus, RefreshCw, Sparkles, Gift, AlertCircle } from 'lucide-react'
+import { Plus, RefreshCw, Sparkles, Gift } from 'lucide-react'
 import { CapsuleCard } from './CapsuleCard'
 import { CapsuleEditor } from './CapsuleEditor'
 import { useTimeCapsules } from '../../hooks/useTimeCapsules'
