@@ -5,12 +5,14 @@ import { CapsuleCard } from './CapsuleCard'
 import { CapsuleEditor } from './CapsuleEditor'
 import { useTimeCapsules } from '../../hooks/useTimeCapsules'
 import { useIdentity } from '../../hooks/useIdentity'
+import { useToast } from '../ui/Toast'
 import { NotesSkeleton } from '../ui/PageSkeletons'
 
 export function CapsuleList() {
-  const { capsules, loading, fetchCapsules, createCapsule, deleteCapsule, isUnlocked, getNow } =
+  const { capsules, loading, error, fetchCapsules, createCapsule, deleteCapsule, isUnlocked, getNow } =
     useTimeCapsules()
   const { identity } = useIdentity()
+  const { showSuccess, showError } = useToast()
   const [showEditor, setShowEditor] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -20,13 +22,28 @@ export function CapsuleList() {
     unlockAt: string,
     imageUrl?: string
   ) => {
-    if (!identity) return
+    if (!identity) {
+      showError('请先选择身份')
+      return
+    }
     setSubmitting(true)
     try {
       await createCapsule(title, content, identity, unlockAt, imageUrl)
+      showSuccess('胶囊封存成功！')
       setShowEditor(false)
+    } catch (e: any) {
+      showError(e?.message || '封存失败，请重试')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleDeleteCapsule = async (id: number) => {
+    try {
+      await deleteCapsule(id)
+      showSuccess('胶囊已删除')
+    } catch (e: any) {
+      showError(e?.message || '删除失败，请重试')
     }
   }
 
@@ -125,7 +142,7 @@ export function CapsuleList() {
                   isUnlocked={isUnlocked(capsule)}
                   currentIdentity={identity}
                   getNow={getNow}
-                  onDelete={deleteCapsule}
+                  onDelete={handleDeleteCapsule}
                 />
               </motion.div>
             ))}

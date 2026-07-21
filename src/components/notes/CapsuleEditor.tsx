@@ -114,7 +114,13 @@ export function CapsuleEditor({
   minDate.setMinutes(minDate.getMinutes() + 1)
   const minDateStr = minDate.toISOString().split('T')[0]
 
-  const isFormValid = title.trim() && content.trim() && unlockDate && unlockTime
+  const isUnlockTimeValid = () => {
+    if (!unlockDate || !unlockTime) return false
+    const unlockAt = new Date(`${unlockDate}T${unlockTime}:00`)
+    return unlockAt.getTime() > Date.now()
+  }
+
+  const isFormValid = title.trim() && content.trim() && unlockDate && unlockTime && isUnlockTimeValid()
 
   return (
     <AnimatePresence>
@@ -277,7 +283,13 @@ export function CapsuleEditor({
 
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
                 <span className="text-xs text-gray-400">
-                  {isFormValid ? '准备好了，封存吧～' : '请填写完整信息'}
+                  {isFormValid
+                    ? '准备好了，封存吧～'
+                    : !title.trim() || !content.trim()
+                    ? '请填写完整信息'
+                    : !unlockDate || !unlockTime
+                    ? '请选择解锁时间'
+                    : '解锁时间必须在未来'}
                 </span>
                 <motion.button
                   whileHover={isFormValid ? { scale: 1.02 } : {}}
