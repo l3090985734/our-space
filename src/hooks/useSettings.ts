@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { demoStorage, isDemoMode } from '../lib/mockStorage'
 import { onRefresh } from '../lib/refreshEvent'
+import { ANNIVERSARY_DATE } from '../lib/config'
 import type { AppSettings } from '../types'
 
 const SETTINGS_ID = 1
 
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>({
-    anniversary_date: '2024-01-01',
+    anniversary_date: ANNIVERSARY_DATE,
   })
   const [loading, setLoading] = useState(true)
 
@@ -32,7 +33,7 @@ export function useSettings() {
         if (error.code === 'PGRST116') {
           const { data: newData, error: insertError } = await supabase
             .from('app_settings')
-            .insert({ id: SETTINGS_ID, anniversary_date: '2024-01-01' })
+            .insert({ id: SETTINGS_ID, anniversary_date: ANNIVERSARY_DATE })
             .select()
             .single()
 

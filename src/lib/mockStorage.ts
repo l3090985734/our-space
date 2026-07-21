@@ -1,4 +1,5 @@
 import type { Note, Photo, Countdown, Identity, TimelineEvent, Wish, AppSettings, TimeCapsule } from '../types'
+import { ANNIVERSARY_DATE } from './config'
 
 const KEYS = {
   NOTES: 'our-space-notes',
@@ -271,7 +272,7 @@ export const demoStorage = {
 
   getSettings(): AppSettings {
     return getFromStorage<AppSettings>(KEYS.SETTINGS, {
-      anniversary_date: '2024-01-01',
+      anniversary_date: ANNIVERSARY_DATE,
     })
   },
 
@@ -296,7 +297,7 @@ export function initDemoData() {
     demoStorage.addCountdown('下次见面', dateStr)
   }
   if (demoStorage.getTimeline().length === 0) {
-    const anniversary = new Date('2024-01-01')
+    const anniversary = new Date(ANNIVERSARY_DATE)
     const firstMeet = new Date('2023-10-15')
     const firstTrip = new Date('2024-05-01')
     demoStorage.addTimelineEvent(
