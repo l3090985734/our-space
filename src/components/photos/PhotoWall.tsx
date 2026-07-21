@@ -1,15 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Trash2,
-  Edit3,
-  Check,
-  X,
-  Plus,
-  ZoomIn,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, Edit3, Check, X, Plus, ZoomIn, } from 'lucide-react'
 import { formatTimeAgo } from '../../lib/utils'
 import { PhotoUpload } from './PhotoUpload'
 import { PhotosSkeleton } from '../ui/PageSkeletons'
@@ -17,8 +8,7 @@ import { usePhotos } from '../../hooks/usePhotos'
 import { useIdentity } from '../../hooks/useIdentity'
 
 export function PhotoWall() {
-  const { photos, loading, uploading, uploadPhoto, deletePhoto, updateCaption } =
-    usePhotos()
+  const { photos, loading, uploading, uploadPhoto, deletePhoto, updateCaption } = usePhotos()
   const { identity } = useIdentity()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showUpload, setShowUpload] = useState(false)
@@ -61,14 +51,12 @@ export function PhotoWall() {
 
   const handleDragEnd = () => {
     if (dragStartX === null) return
-
     const threshold = 50
     if (dragOffset > threshold && currentIndex > 0) {
       setCurrentIndex(currentIndex - 1)
     } else if (dragOffset < -threshold && currentIndex < photos.length - 1) {
       setCurrentIndex(currentIndex + 1)
     }
-
     setDragStartX(null)
     setDragOffset(0)
   }
@@ -130,13 +118,7 @@ export function PhotoWall() {
         >
           上传照片
         </button>
-        <PhotoUpload
-          isOpen={showUpload}
-          onClose={() => setShowUpload(false)}
-          onUpload={handleUpload}
-          uploading={uploading}
-          identity={identity || 'he'}
-        />
+        <PhotoUpload isOpen={showUpload} onClose={() => setShowUpload(false)} onUpload={handleUpload} uploading={uploading} identity={identity || 'he'} />
       </div>
     )
   }
@@ -152,11 +134,9 @@ export function PhotoWall() {
           <Plus className="w-5 h-5" />
         </button>
       </div>
-
       <p className="text-sm text-gray-500 mb-4">
         共 {photos.length} 张 · 第 {currentIndex + 1} 张
       </p>
-
       <div
         ref={containerRef}
         className="relative rounded-2xl overflow-hidden bg-gray-100 select-none"
@@ -177,12 +157,12 @@ export function PhotoWall() {
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="relative"
           >
+            {/* 修改点：移除了 min-h-[300px]，让图片高度自适应 */}
             <img
               src={currentPhoto?.public_url || ''}
               alt={currentPhoto?.caption || '照片'}
-              className="w-full h-auto min-h-[300px] object-contain"
+              className="w-full h-auto object-contain"
             />
-
             {currentIndex > 0 && (
               <button
                 onClick={goToPrev}
@@ -191,7 +171,6 @@ export function PhotoWall() {
                 <ChevronLeft className="w-6 h-6" />
               </button>
             )}
-
             {currentIndex < photos.length - 1 && (
               <button
                 onClick={goToNext}
@@ -200,7 +179,6 @@ export function PhotoWall() {
                 <ChevronRight className="w-6 h-6" />
               </button>
             )}
-
             <div className="absolute top-3 right-3 flex gap-2">
               <button
                 onClick={() => setShowLightbox(true)}
@@ -222,13 +200,9 @@ export function PhotoWall() {
       <div className="mt-4 bg-white rounded-2xl p-4 shadow-sm">
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2">
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                currentPhoto?.uploaded_by === 'he'
-                  ? 'bg-blue-100 text-blue-600'
-                  : 'bg-sakura-light text-sakura-deep'
-              }`}
-            >
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+              currentPhoto?.uploaded_by === 'he' ? 'bg-blue-100 text-blue-600' : 'bg-sakura-light text-sakura-deep'
+            }`}>
               {currentPhoto?.uploaded_by === 'he' ? '他' : '她'}
             </span>
             <span className="text-xs text-gray-400">
@@ -244,7 +218,6 @@ export function PhotoWall() {
             </button>
           )}
         </div>
-
         {editingCaption ? (
           <div className="flex gap-2">
             <input
@@ -281,9 +254,7 @@ export function PhotoWall() {
             key={index}
             onClick={() => setCurrentIndex(index)}
             className={`w-2 h-2 rounded-full transition-all ${
-              index === currentIndex
-                ? 'bg-sakura w-6'
-                : 'bg-gray-300 hover:bg-gray-400'
+              index === currentIndex ? 'bg-sakura w-6' : 'bg-gray-300 hover:bg-gray-400'
             }`}
           />
         ))}
@@ -345,7 +316,6 @@ export function PhotoWall() {
             >
               <X className="w-6 h-6" />
             </button>
-
             {currentIndex > 0 && (
               <button
                 onClick={(e) => {
@@ -357,7 +327,6 @@ export function PhotoWall() {
                 <ChevronLeft className="w-8 h-8" />
               </button>
             )}
-
             {currentIndex < photos.length - 1 && (
               <button
                 onClick={(e) => {
@@ -369,7 +338,6 @@ export function PhotoWall() {
                 <ChevronRight className="w-8 h-8" />
               </button>
             )}
-
             <motion.div
               key={currentPhoto.id}
               initial={{ scale: 0.9, opacity: 0 }}
@@ -389,7 +357,6 @@ export function PhotoWall() {
                 </p>
               )}
             </motion.div>
-
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5">
               {photos.map((_, index) => (
                 <button
@@ -399,9 +366,7 @@ export function PhotoWall() {
                     setCurrentIndex(index)
                   }}
                   className={`w-2 h-2 rounded-full transition-all ${
-                    index === currentIndex
-                      ? 'bg-white w-6'
-                      : 'bg-white/40 hover:bg-white/60'
+                    index === currentIndex ? 'bg-white w-6' : 'bg-white/40 hover:bg-white/60'
                   }`}
                 />
               ))}
@@ -410,13 +375,7 @@ export function PhotoWall() {
         )}
       </AnimatePresence>
 
-      <PhotoUpload
-        isOpen={showUpload}
-        onClose={() => setShowUpload(false)}
-        onUpload={handleUpload}
-        uploading={uploading}
-        identity={identity || 'he'}
-      />
+      <PhotoUpload isOpen={showUpload} onClose={() => setShowUpload(false)} onUpload={handleUpload} uploading={uploading} identity={identity || 'he'} />
     </div>
   )
 }

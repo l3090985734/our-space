@@ -34,6 +34,14 @@ export function CapsuleEditor({
     if (isOpen && textareaRef.current) {
       textareaRef.current.focus()
     }
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
   }, [isOpen])
 
   const handleSubmit = async () => {
@@ -70,21 +78,25 @@ export function CapsuleEditor({
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/50 z-[60] flex items-end justify-center"
           onClick={handleClose}
+          onTouchMove={(e) => e.stopPropagation()}
         >
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative bg-white rounded-t-[2rem] w-full max-w-lg max-h-[85vh] overflow-hidden"
+            className="relative bg-white rounded-t-[2rem] w-full max-w-lg max-h-[90vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
           >
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sakura-light via-sakura-deep to-sakura-light" />
 
             <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-sakura/10 blur-3xl" />
             <div className="absolute top-10 -left-16 w-32 h-32 rounded-full bg-sakura-light/50 blur-3xl" />
 
-            <div className="relative p-6 overflow-y-auto max-h-[85vh]">
+            <div className="relative p-6 overflow-y-auto max-h-[90vh] -webkit-overflow-scrolling-touch"
+              onTouchMove={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sakura to-sakura-deep flex items-center justify-center shadow-md shadow-sakura/30">
