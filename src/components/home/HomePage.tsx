@@ -157,11 +157,11 @@ export function HomePage() {
           <div className="grid grid-cols-3 gap-2">
             {recentPhotos.map((photo) => (
               <Link key={photo.id} to="/photos">
-                <div className="rounded-xl overflow-hidden bg-gray-100">
+                <div className="aspect-square rounded-xl overflow-hidden bg-sakura-light/20 flex items-center justify-center">
                   <img
                     src={photo.public_url || ''}
                     alt={photo.caption || '照片'}
-                    className="w-full h-auto object-cover"
+                    className="max-w-full max-h-full object-contain"
                     loading="lazy"
                   />
                 </div>
