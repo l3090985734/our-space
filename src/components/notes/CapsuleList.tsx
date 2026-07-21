@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Plus, RefreshCw, Sparkles, Gift } from 'lucide-react'
+import { Plus, RefreshCw, Sparkles, Gift, AlertCircle } from 'lucide-react'
 import { CapsuleCard } from './CapsuleCard'
 import { CapsuleEditor } from './CapsuleEditor'
 import { useTimeCapsules } from '../../hooks/useTimeCapsules'
@@ -15,6 +15,12 @@ export function CapsuleList() {
   const { showSuccess, showError } = useToast()
   const [showEditor, setShowEditor] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (error) {
+      showError(error)
+    }
+  }, [error, showError])
 
   const handleCreateCapsule = async (
     title: string,
