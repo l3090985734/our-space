@@ -9,7 +9,6 @@ import { useIdentity } from '../../hooks/useIdentity'
 import { useSettings } from '../../hooks/useSettings'
 import { calculateDaysLeft, calculateDaysSince, formatTimeAgo } from '../../lib/utils'
 import { Skeleton, SkeletonCard } from '../ui/Skeleton'
-import { LazyImage } from '../ui/LazyImage'
 
 export function HomePage() {
   const { countdowns, loading: countdownsLoading } = useCountdowns()
@@ -158,13 +157,12 @@ export function HomePage() {
           <div className="grid grid-cols-3 gap-2">
             {recentPhotos.map((photo) => (
               <Link key={photo.id} to="/photos">
-                <div className="aspect-square rounded-xl overflow-hidden bg-gray-100">
-                  <LazyImage
+                <div className="rounded-xl overflow-hidden bg-gray-100">
+                  <img
                     src={photo.public_url || ''}
                     alt={photo.caption || '照片'}
-                    className="w-full h-full"
-                    aspectRatio="1/1"
-                    blurPlaceholder={photo.thumbnail}
+                    className="w-full h-auto object-cover"
+                    loading="lazy"
                   />
                 </div>
               </Link>
