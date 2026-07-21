@@ -139,8 +139,7 @@ export function PhotoWall() {
       </p>
       <div
         ref={containerRef}
-        className="relative rounded-2xl overflow-hidden bg-sakura-light/20 select-none flex items-center justify-center"
-        style={{ minHeight: '300px' }}
+        className="relative rounded-2xl overflow-hidden bg-sakura-light/20 select-none aspect-[4/3] flex items-center justify-center"
         onMouseDown={handleDragStart}
         onMouseMove={handleDragMove}
         onMouseUp={handleDragEnd}
@@ -156,13 +155,12 @@ export function PhotoWall() {
             animate={{ opacity: 1, x: dragOffset }}
             exit={{ opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full h-full flex items-center justify-center"
+            className="absolute inset-0 flex items-center justify-center"
           >
-            {/* 修改点：移除了 min-h-[300px]，让图片高度自适应 */}
             <img
               src={currentPhoto?.public_url || ''}
               alt={currentPhoto?.caption || '照片'}
-              className="w-full h-auto object-contain"
+              className="max-w-full max-h-full object-contain"
             />
             {currentIndex > 0 && (
               <button
