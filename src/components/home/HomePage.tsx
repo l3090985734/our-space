@@ -39,7 +39,7 @@ export function HomePage() {
   const [countdownIndex, setCountdownIndex] = useState(0)
   const [photoStartIndex, setPhotoStartIndex] = useState(0)
 
-  const recentPhotos = photos.slice(0, 6)
+  const recentPhotos = photos
   const recentNotes = notes.slice(0, 3)
   const pendingWishes = wishes.filter((w) => !w.completed).slice(0, 3)
   const daysTogether = calculateDaysSince(settings.anniversary_date)

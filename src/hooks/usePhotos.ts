@@ -5,6 +5,20 @@ import { demoStorage, isDemoMode } from '../lib/mockStorage'
 import { onRefresh } from '../lib/refreshEvent'
 import type { Photo, Identity } from '../types'
 
+/** 将 Supabase 英文错误转为中文提示 */
+function translateError(message: string): string {
+  if (message.includes('schema cache')) {
+    return '数据库表结构不匹配，请检查 Supabase 表是否已创建'
+  }
+  if (message.includes('row-level security') || message.includes('policy')) {
+    return '权限不足，请检查 Supabase RLS 策略配置'
+  }
+  if (message.includes('duplicate') || message.includes('unique')) {
+    return '数据重复，请勿重复操作'
+  }
+  return message
+}
+
 export function usePhotos() {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,7 +54,7 @@ export function usePhotos() {
 
       setPhotos(photosWithUrls)
     } catch (e: any) {
-      setError(e.message)
+      setError(translateError(e.message))
     } finally {
       setLoading(false)
     }
@@ -78,7 +92,6 @@ export function usePhotos() {
         }
 
         const compressedBlob = await compressImage(file)
-        const thumbnail = await generateThumbnail(compressedBlob)
         const fileExt = 'webp'
         const fileName = `${Date.now()}_${Math.random()
           .toString(36)
@@ -97,14 +110,13 @@ export function usePhotos() {
           storage_path: filePath,
           caption,
           uploaded_by: uploadedBy,
-          thumbnail,
         })
 
         if (dbError) throw dbError
 
         await fetchPhotos()
       } catch (e: any) {
-        setError(e.message)
+        setError(translateError(e.message))
         throw e
       } finally {
         setUploading(false)
@@ -139,7 +151,7 @@ export function usePhotos() {
 
         setPhotos((prev) => prev.filter((p) => p.id !== photo.id))
       } catch (e: any) {
-        setError(e.message)
+        setError(translateError(e.message))
         throw e
       }
     },
@@ -170,7 +182,7 @@ export function usePhotos() {
           prev.map((p) => (p.id === photoId ? { ...p, caption } : p))
         )
       } catch (e: any) {
-        setError(e.message)
+        setError(translateError(e.message))
         throw e
       }
     },
