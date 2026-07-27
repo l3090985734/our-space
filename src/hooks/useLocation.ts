@@ -52,9 +52,17 @@ export function useLocation() {
   )
 
   const shareMyLocation = useCallback(
-    async (identity: Identity): Promise<boolean> => {
+    async (identity: Identity): Promise<{ success: boolean; error?: string }> => {
       setSharing(true)
       try {
+        if (!navigator.geolocation) {
+          return { success: false, error: '当前浏览器不支持定位功能' }
+        }
+
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+          return { success: false, error: '定位功能需要 HTTPS 环境才能使用' }
+        }
+
         const position = await new Promise<GeolocationPosition>(
           (resolve, reject) => {
             navigator.geolocation.getCurrentPosition(
@@ -106,10 +114,20 @@ export function useLocation() {
           await fetchLocations()
         }
 
-        return true
+        return { success: true }
       } catch (e: any) {
         console.error('Failed to share location:', e?.message)
-        return false
+        let errorMsg = '位置共享失败'
+        if (e?.code === 1) {
+          errorMsg = '定位权限被拒绝，请在浏览器设置中允许位置访问'
+        } else if (e?.code === 2) {
+          errorMsg = '无法获取位置信息，请检查设备定位是否开启'
+        } else if (e?.code === 3) {
+          errorMsg = '定位超时，请重试'
+        } else if (e?.message) {
+          errorMsg = e.message
+        }
+        return { success: false, error: errorMsg }
       } finally {
         setSharing(false)
       }

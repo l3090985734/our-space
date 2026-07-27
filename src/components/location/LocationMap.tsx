@@ -11,7 +11,7 @@ interface LocationMapProps {
   myLocation: Location | null
   otherLocation: Location | null
   currentIdentity: Identity | null
-  onShareLocation: () => Promise<boolean>
+  onShareLocation: () => Promise<{ success: boolean; error?: string }>
   sharing: boolean
   loading: boolean
   onRefresh: () => void
@@ -117,11 +117,11 @@ export function LocationMap({
   }
 
   const handleShare = async () => {
-    const success = await onShareLocation()
-    if (success) {
+    const result = await onShareLocation()
+    if (result.success) {
       showToast('位置共享成功', 'success')
     } else {
-      showToast('位置共享失败，请检查定位权限', 'error')
+      showToast(result.error || '位置共享失败', 'error')
     }
   }
 
