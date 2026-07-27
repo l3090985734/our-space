@@ -3,26 +3,33 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Check, Edit2, Trash2 } from 'lucide-react'
 import { WishEditor } from './WishEditor'
 import { useWishes } from '../../hooks/useWishes'
+import { useToast } from '../ui/Toast'
 import type { Wish } from '../../types'
 import { WishesSkeleton } from '../ui/PageSkeletons'
 
 export function WishList() {
   const { wishes, loading, createWish, updateWish, toggleWish, deleteWish } = useWishes()
+  const { showToast } = useToast()
   const [showEditor, setShowEditor] = useState(false)
   const [editingWish, setEditingWish] = useState<Wish | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const handleSubmit = async (title: string, description: string, icon: string) => {
     setSubmitting(true)
     try {
       if (editingWish) {
         await updateWish(editingWish.id, title, description, icon)
+        showToast('愿望已更新～', 'success')
       } else {
         await createWish(title, description, icon)
+        showToast('愿望已许下 ⭐', 'success')
       }
       setShowEditor(false)
       setEditingWish(null)
+    } catch (e: any) {
+      showToast(e.message || '保存失败，请重试', 'error')
     } finally {
       setSubmitting(false)
     }
@@ -38,9 +45,30 @@ export function WishList() {
     setShowEditor(true)
   }
 
+  const handleToggle = async (id: number) => {
+    try {
+      const wish = wishes.find((w) => w.id === id)
+      const wasCompleted = wish?.completed
+      await toggleWish(id)
+      if (!wasCompleted) {
+        showToast('🎉 恭喜实现愿望！', 'success')
+      }
+    } catch (e: any) {
+      showToast(e.message || '操作失败，请重试', 'error')
+    }
+  }
+
   const handleDelete = async (id: number) => {
-    await deleteWish(id)
-    setDeleteConfirm(null)
+    setDeleting(true)
+    try {
+      await deleteWish(id)
+      setDeleteConfirm(null)
+      showToast('已删除', 'success')
+    } catch (e: any) {
+      showToast(e.message || '删除失败，请重试', 'error')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const completedCount = wishes.filter((w) => w.completed).length
@@ -101,7 +129,7 @@ export function WishList() {
               >
                 <div className="flex items-start gap-3">
                   <button
-                    onClick={() => toggleWish(wish.id)}
+                    onClick={() => handleToggle(wish.id)}
                     className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
                       wish.completed
                         ? 'bg-sakura border-sakura text-white'
@@ -190,7 +218,7 @@ export function WishList() {
                 删除这个愿望？
               </h3>
               <p className="text-gray-500 text-sm mb-6">
-                删掉就找不回来了哦，确定吗？
+                删除后就找不回来啦，确定要删除吗？
               </p>
               <div className="flex gap-3">
                 <button
@@ -201,9 +229,10 @@ export function WishList() {
                 </button>
                 <button
                   onClick={() => handleDelete(deleteConfirm)}
-                  className="flex-1 py-2.5 bg-red-500 text-white rounded-full font-medium hover:bg-red-600 transition-colors"
+                  disabled={deleting}
+                  className="flex-1 py-2.5 bg-red-500 text-white rounded-full font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
                 >
-                  删掉
+                  {deleting ? '删除中...' : '删除'}
                 </button>
               </div>
             </motion.div>

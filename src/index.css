@@ -25,3 +25,36 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+.leaflet-container {
+  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  outline: none;
+  cursor: grab;
+}
+
+.leaflet-container:active {
+  cursor: grabbing;
+}
+
+.leaflet-tile {
+  filter: none;
+  will-change: initial;
+}
+
+.leaflet-tile-container {
+  will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+  transition: transform 0.2s cubic-bezier(0.33, 1, 0.68, 1) !important;
+}
+
+.leaflet-fade-anim .leaflet-tile {
+  transition: opacity 0.2s ease-out !important;
+}
+
+.custom-marker {
+  background: none;
+  border: none;
+}

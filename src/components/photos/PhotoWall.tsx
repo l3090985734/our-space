@@ -118,7 +118,7 @@ export function PhotoWall() {
         >
           上传照片
         </button>
-        <PhotoUpload isOpen={showUpload} onClose={() => setShowUpload(false)} onUpload={handleUpload} uploading={uploading} identity={identity || 'he'} />
+        <PhotoUpload isOpen={showUpload} onClose={() => setShowUpload(false)} onUpload={handleUpload} uploading={uploading} />
       </div>
     )
   }
@@ -374,7 +374,7 @@ export function PhotoWall() {
         )}
       </AnimatePresence>
 
-      <PhotoUpload isOpen={showUpload} onClose={() => setShowUpload(false)} onUpload={handleUpload} uploading={uploading} identity={identity || 'he'} />
+      <PhotoUpload isOpen={showUpload} onClose={() => setShowUpload(false)} onUpload={handleUpload} uploading={uploading} />
     </div>
   )
 }

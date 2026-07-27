@@ -1,4 +1,4 @@
-import type { Note, Photo, Countdown, Identity, TimelineEvent, Wish, AppSettings, TimeCapsule } from '../types'
+import type { Note, Photo, Countdown, Identity, TimelineEvent, Wish, AppSettings, TimeCapsule, Location } from '../types'
 import { ANNIVERSARY_DATE } from './config'
 
 const KEYS = {
@@ -9,6 +9,7 @@ const KEYS = {
   WISHES: 'our-space-wishes',
   SETTINGS: 'our-space-settings',
   CAPSULES: 'our-space-capsules',
+  LOCATIONS: 'our-space-locations',
 } as const
 
 function getFromStorage<T>(key: string, defaultValue: T): T {
@@ -24,8 +25,11 @@ function saveToStorage<T>(key: string, data: T) {
   localStorage.setItem(key, JSON.stringify(data))
 }
 
+let idCounter = 0
+
 function generateId(): number {
-  return Date.now() + Math.floor(Math.random() * 1000)
+  idCounter += 1
+  return Date.now() * 1000 + idCounter + Math.floor(Math.random() * 100)
 }
 
 export const isDemoMode = () => {
@@ -154,7 +158,7 @@ export const demoStorage = {
     )
   },
 
-  addTimelineEvent(title: string, eventDate: string, description: string): TimelineEvent {
+  addTimelineEvent(title: string, eventDate: string, description: string, createdBy?: Identity): TimelineEvent {
     const events = getFromStorage<TimelineEvent[]>(KEYS.TIMELINE, [])
     const newEvent: TimelineEvent = {
       id: generateId(),
@@ -162,6 +166,7 @@ export const demoStorage = {
       event_date: eventDate,
       description,
       created_at: new Date().toISOString(),
+      created_by: createdBy,
     }
     events.push(newEvent)
     saveToStorage(KEYS.TIMELINE, events)
@@ -278,6 +283,42 @@ export const demoStorage = {
     )
   },
 
+  getLocations(): Location[] {
+    return getFromStorage<Location[]>(KEYS.LOCATIONS, [])
+  },
+
+  getLocationByIdentity(identity: Identity): Location | null {
+    const locations = this.getLocations()
+    return locations.find((l) => l.identity === identity) || null
+  },
+
+  upsertLocation(identity: Identity, latitude: number, longitude: number): Location {
+    const locations = this.getLocations()
+    const existingIndex = locations.findIndex((l) => l.identity === identity)
+    const now = new Date().toISOString()
+
+    if (existingIndex >= 0) {
+      locations[existingIndex] = {
+        ...locations[existingIndex],
+        latitude,
+        longitude,
+        updated_at: now,
+      }
+    } else {
+      const newLocation: Location = {
+        id: generateId(),
+        identity,
+        latitude,
+        longitude,
+        updated_at: now,
+      }
+      locations.push(newLocation)
+    }
+
+    saveToStorage(KEYS.LOCATIONS, locations)
+    return locations.find((l) => l.identity === identity)!
+  },
+
   getSettings(): AppSettings {
     return getFromStorage<AppSettings>(KEYS.SETTINGS, {
       anniversary_date: ANNIVERSARY_DATE,
@@ -311,17 +352,20 @@ export function initDemoData() {
     demoStorage.addTimelineEvent(
       '确定关系',
       anniversary.toISOString().split('T')[0],
-      '那天晚上在操场上，你牵起了我的手，心跳漏了一拍。'
+      '那天晚上在操场上，你牵起了我的手，心跳漏了一拍。',
+      'she'
     )
     demoStorage.addTimelineEvent(
       '第一次见面',
       firstMeet.toISOString().split('T')[0],
-      '图书馆门口，你穿了件白色卫衣，笑起来好温暖。'
+      '图书馆门口，你穿了件白色卫衣，笑起来好温暖。',
+      'he'
     )
     demoStorage.addTimelineEvent(
       '第一次一起旅行',
       firstTrip.toISOString().split('T')[0],
-      '去了海边，看了日出，拍了好多好多照片。'
+      '去了海边，看了日出，拍了好多好多照片。',
+      'she'
     )
   }
   if (demoStorage.getWishes().length === 0) {
@@ -349,5 +393,38 @@ export function initDemoData() {
       'he',
       futureDate.toISOString()
     )
+  }
+  if (demoStorage.getPhotos().length === 0) {
+    const photoUrls = [
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=romantic%20sunset%20beach%20couple%20silhouette%20pink%20orange%20sky&image_size=square',
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=cozy%20coffee%20shop%20date%20two%20cups%20warm%20light&image_size=square',
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=cherry%20blossom%20park%20spring%20pink%20flowers%20romantic&image_size=square',
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=stargazing%20night%20sky%20couple%20blanket%20milky%20way&image_size=square',
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=rainy%20day%20umbrella%20shared%20cozy%20street%20lights&image_size=square',
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=mountain%20hiking%20adventure%20couple%20sunrise%20peak&image_size=square',
+    ]
+    const captions = [
+      '海边的日落，和你一起看的最美 🌅',
+      '周末的下午茶时光 ☕️',
+      '春天的樱花，你比花还好看 🌸',
+      '一起看过的星空，最亮的星是你的眼睛 ✨',
+      '下雨天和你共撑一把伞，是最幸福的事 ☔️',
+      '一起爬上山顶看日出，累但值得 🏔️',
+    ]
+    const identities: Identity[] = ['she', 'he', 'she', 'he', 'she', 'he']
+
+    photoUrls.forEach((url, i) => {
+      demoStorage.addPhoto(
+        `demo/photo_${i}.webp`,
+        captions[i],
+        identities[i],
+        url,
+        url
+      )
+    })
+  }
+  if (demoStorage.getLocations().length === 0) {
+    demoStorage.upsertLocation('he', 39.9087, 116.3975)
+    demoStorage.upsertLocation('she', 31.2304, 121.4737)
   }
 }

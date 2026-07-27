@@ -158,6 +158,15 @@ export function TimelineEditor({
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none"
                   maxLength={30}
                 />
+                <p className={`text-xs text-right mt-1 ${
+                  title.length >= 25
+                    ? 'text-red-500 font-medium'
+                  : title.length >= 20
+                    ? 'text-orange-500'
+                    : 'text-gray-400'
+                }`}>
+                  {title.length}/30
+                </p>
               </div>
 
               <div>
@@ -186,7 +195,13 @@ export function TimelineEditor({
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none resize-none min-h-28"
                   maxLength={500}
                 />
-                <p className="text-xs text-gray-400 text-right mt-1">
+                <p className={`text-xs text-right mt-1 ${
+                  description.length >= 490
+                    ? 'text-red-500 font-medium'
+                    : description.length >= 400
+                    ? 'text-orange-500'
+                    : 'text-gray-400'
+                }`}>
                   {description.length}/500
                 </p>
               </div>

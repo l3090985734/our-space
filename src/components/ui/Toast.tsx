@@ -15,6 +15,7 @@ interface ToastContextValue {
   showError: (message: string, duration?: number) => void
   showLoading: (message: string) => () => void
   hideToast: (id: number) => void
+  showToast: (message: string, type: ToastType, duration?: number) => void
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
@@ -41,7 +42,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const showToast = useCallback(
-    (type: ToastType, message: string, duration?: number) => {
+    (message: string, type: ToastType, duration?: number) => {
       const id = ++toastIdCounter
       setToasts((prev) => [...prev, { id, type, message }])
 
@@ -60,30 +61,33 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const showSuccess = useCallback(
     (message: string, duration?: number) => {
-      showToast('success', message, duration)
+      showToast(message, 'success', duration)
     },
     [showToast]
   )
 
   const showError = useCallback(
     (message: string, duration?: number) => {
-      showToast('error', message, duration)
+      showToast(message, 'error', duration)
     },
     [showToast]
   )
 
   const showLoading = useCallback(
     (message: string) => {
-      const id = showToast('loading', message, 0)
+      const id = showToast(message, 'loading', 0)
       return () => hideToast(id)
     },
     [showToast, hideToast]
   )
 
   return (
-    <ToastContext.Provider value={{ showSuccess, showError, showLoading, hideToast }}>
+    <ToastContext.Provider value={{ showSuccess, showError, showLoading, hideToast, showToast }}>
       {children}
-      <div className="fixed inset-0 pointer-events-none z-[70] flex flex-col items-center gap-2 pt-20">
+      <div
+        className="fixed inset-0 pointer-events-none z-[70] flex flex-col items-center gap-2"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 5rem)' }}
+      >
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div

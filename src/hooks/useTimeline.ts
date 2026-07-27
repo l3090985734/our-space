@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { demoStorage, isDemoMode } from '../lib/mockStorage'
 import { onRefresh } from '../lib/refreshEvent'
-import type { TimelineEvent } from '../types'
+import type { TimelineEvent, Identity } from '../types'
 
 export function useTimeline() {
   const [events, setEvents] = useState<TimelineEvent[]>([])
@@ -41,19 +41,19 @@ export function useTimeline() {
   }, [fetchEvents])
 
   const createEvent = useCallback(
-    async (title: string, eventDate: string, description: string) => {
+    async (title: string, eventDate: string, description: string, createdBy?: Identity) => {
       try {
         setError(null)
 
         if (isDemoMode()) {
-          const newEvent = demoStorage.addTimelineEvent(title, eventDate, description)
+          const newEvent = demoStorage.addTimelineEvent(title, eventDate, description, createdBy)
           setEvents(demoStorage.getTimeline())
           return newEvent
         }
 
         const { data, error } = await supabase
           .from('timeline_events')
-          .insert({ title, event_date: eventDate, description })
+          .insert({ title, event_date: eventDate, description, created_by: createdBy })
           .select()
 
         if (error) throw error

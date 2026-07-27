@@ -8,8 +8,7 @@ export function Layout() {
   useSwipeNav(true)
 
   const handleRefresh = async () => {
-    triggerRefresh()
-    await new Promise((r) => setTimeout(r, 800))
+    await triggerRefresh()
   }
 
   return (

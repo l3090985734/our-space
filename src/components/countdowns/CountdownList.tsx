@@ -3,27 +3,47 @@ import { Plus } from 'lucide-react'
 import { CountdownCard } from './CountdownCard'
 import { CountdownEditor } from './CountdownEditor'
 import { useCountdowns } from '../../hooks/useCountdowns'
+import { useToast } from '../ui/Toast'
 import type { Countdown } from '../../types'
 import { CountdownSkeleton } from '../ui/PageSkeletons'
 
 export function CountdownList() {
   const { countdowns, loading, createCountdown, updateCountdown, deleteCountdown } =
     useCountdowns()
+  const { showToast } = useToast()
   const [showEditor, setShowEditor] = useState(false)
   const [editingCountdown, setEditingCountdown] = useState<Countdown | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const handleSubmit = async (title: string, targetDate: string) => {
     setSubmitting(true)
     try {
       if (editingCountdown) {
         await updateCountdown(editingCountdown.id, title, targetDate)
+        showToast('倒计时已更新～', 'success')
       } else {
         await createCountdown(title, targetDate)
+        showToast('倒计时已创建 ⏳', 'success')
       }
+      setShowEditor(false)
+      setEditingCountdown(null)
+    } catch (e: any) {
+      showToast(e.message || '保存失败，请重试', 'error')
     } finally {
       setSubmitting(false)
-      setEditingCountdown(null)
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id)
+    try {
+      await deleteCountdown(id)
+      showToast('已删除', 'success')
+    } catch (e: any) {
+      showToast(e.message || '删除失败，请重试', 'error')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -76,7 +96,8 @@ export function CountdownList() {
               key={countdown.id}
               countdown={countdown}
               onEdit={() => handleEdit(countdown)}
-              onDelete={() => deleteCountdown(countdown.id)}
+              onDelete={() => handleDelete(countdown.id)}
+              deleting={deletingId === countdown.id}
             />
           ))}
         </div>

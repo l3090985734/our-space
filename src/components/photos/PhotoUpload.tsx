@@ -1,14 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Upload, Image as ImageIcon, AlertCircle } from 'lucide-react'
-import type { Identity } from '../../types'
+import { Skeleton } from '../ui/Skeleton'
 
 interface PhotoUploadProps {
   isOpen: boolean
   onClose: () => void
   onUpload: (file: File, caption: string) => void
   uploading: boolean
-  identity: Identity
 }
 
 export function PhotoUpload({
@@ -19,6 +18,7 @@ export function PhotoUpload({
 }: PhotoUploadProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const [caption, setCaption] = useState('')
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -34,12 +34,29 @@ export function PhotoUpload({
     }
   }, [isOpen])
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+      setPreviewLoading(true)
+      const newPreviewUrl = URL.createObjectURL(file)
       setSelectedFile(file)
-      setPreviewUrl(URL.createObjectURL(file))
+      setPreviewUrl(newPreviewUrl)
     }
+  }
+
+  const handleImageLoad = () => {
+    setPreviewLoading(false)
   }
 
   const handleSubmit = async () => {
@@ -103,16 +120,21 @@ export function PhotoUpload({
               </div>
             ) : (
               <div className="mb-6">
-                <div className="relative rounded-2xl overflow-hidden mb-4">
+                <div className="relative rounded-2xl overflow-hidden mb-4 bg-sakura-light/20">
+                  {previewLoading && (
+                    <Skeleton className="w-full h-64" />
+                  )}
                   <img
                     src={previewUrl}
                     alt="预览"
-                    className="w-full h-auto max-h-64 object-contain"
+                    className={`w-full h-auto max-h-64 object-contain ${previewLoading ? 'hidden' : 'block'}`}
+                    onLoad={handleImageLoad}
                   />
                   <button
                     onClick={() => {
                       setSelectedFile(null)
                       setPreviewUrl(null)
+                      setPreviewLoading(false)
                     }}
                     className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
                   >
@@ -130,7 +152,19 @@ export function PhotoUpload({
                     placeholder="想说点什么..."
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none resize-none"
                     rows={3}
+                    maxLength={100}
                   />
+                  <div className="mt-1 text-right">
+                    <span className={`text-xs ${
+                      caption.length >= 90
+                        ? 'text-red-500 font-medium'
+                        : caption.length >= 70
+                        ? 'text-orange-500'
+                        : 'text-gray-400'
+                    }`}>
+                      {caption.length}/100
+                    </span>
+                  </div>
                 </div>
 
                 {uploadError && (

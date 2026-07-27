@@ -21,8 +21,11 @@ import { useNotes } from '../../hooks/useNotes'
 import { useWishes } from '../../hooks/useWishes'
 import { useIdentity } from '../../hooks/useIdentity'
 import { useSettings } from '../../hooks/useSettings'
+import { useLocation } from '../../hooks/useLocation'
 import { calculateDaysLeft, calculateDaysSince, formatTimeAgo } from '../../lib/utils'
 import { Skeleton, SkeletonCard } from '../ui/Skeleton'
+import { LocationMap } from '../location/LocationMap'
+import { AuthorBadge } from '../ui/AuthorBadge'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -32,6 +35,14 @@ export function HomePage() {
   const { wishes, loading: wishesLoading, toggleWish } = useWishes()
   const { identity } = useIdentity()
   const { settings, updateAnniversary } = useSettings()
+  const {
+    loading: locationLoading,
+    sharing: locationSharing,
+    getOtherLocation,
+    getMyLocation,
+    shareMyLocation,
+    fetchLocations,
+  } = useLocation()
   const [showEditor, setShowEditor] = useState(false)
   const [editDate, setEditDate] = useState(settings.anniversary_date)
   const [saving, setSaving] = useState(false)
@@ -44,6 +55,7 @@ export function HomePage() {
   const pendingWishes = wishes.filter((w) => !w.completed).slice(0, 3)
   const daysTogether = calculateDaysSince(settings.anniversary_date)
   const daysDigits = String(daysTogether).split('')
+  const visiblePhotos = recentPhotos.slice(photoStartIndex, photoStartIndex + 3)
 
   useEffect(() => {
     if (countdowns.length <= 1) return
@@ -56,10 +68,7 @@ export function HomePage() {
   useEffect(() => {
     if (recentPhotos.length <= 3) return
     const timer = setInterval(() => {
-      setPhotoStartIndex((prev) => {
-        const max = recentPhotos.length - 3
-        return prev >= max ? 0 : prev + 1
-      })
+      setPhotoStartIndex((prev) => (prev + 1) % recentPhotos.length)
     }, 4000)
     return () => clearInterval(timer)
   }, [recentPhotos.length])
@@ -76,12 +85,12 @@ export function HomePage() {
 
   const handlePhotoPrev = () => {
     if (recentPhotos.length <= 3) return
-    setPhotoStartIndex((prev) => Math.max(0, prev - 1))
+    setPhotoStartIndex((prev) => (prev - 1 + recentPhotos.length) % recentPhotos.length)
   }
 
   const handlePhotoNext = () => {
     if (recentPhotos.length <= 3) return
-    setPhotoStartIndex((prev) => Math.min(recentPhotos.length - 3, prev + 1))
+    setPhotoStartIndex((prev) => (prev + 1) % recentPhotos.length)
   }
 
   const handleOpenEditor = () => {
@@ -102,8 +111,6 @@ export function HomePage() {
   const handleWishClick = () => {
     navigate('/countdowns', { state: { tab: 'wishes' } })
   }
-
-  const visiblePhotos = recentPhotos.slice(photoStartIndex, photoStartIndex + 3)
 
   return (
     <div className="space-y-4 pb-6">
@@ -204,16 +211,24 @@ export function HomePage() {
                   transition={{ duration: 0.3 }}
                 >
                   <Link to="/countdowns" className="block">
-                    <div className="bg-gradient-to-br from-rose-400 via-pink-400 to-sakura-deep rounded-2xl p-4 text-white relative overflow-hidden min-h-28">
+                    <div
+                      className={`rounded-2xl p-4 text-white relative overflow-hidden min-h-28 ${
+                        calculateDaysLeft(countdowns[countdownIndex].target_date) < 0
+                          ? 'bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400'
+                          : 'bg-gradient-to-br from-rose-400 via-pink-400 to-sakura-deep'
+                      }`}
+                    >
                       <div className="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
                       <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
                       
                       <div className="relative h-full flex flex-col items-center justify-center">
                         <p className="text-xs opacity-90 mb-1.5">
-                          距离 {countdowns[countdownIndex].title}
+                          {calculateDaysLeft(countdowns[countdownIndex].target_date) < 0
+                            ? `${countdowns[countdownIndex].title} 已过去`
+                            : `距离 ${countdowns[countdownIndex].title}`}
                         </p>
                         <div className="flex items-center gap-1">
-                          {String(calculateDaysLeft(countdowns[countdownIndex].target_date)).split('').map((digit, i) => (
+                          {String(Math.abs(calculateDaysLeft(countdowns[countdownIndex].target_date))).split('').map((digit, i) => (
                             <span
                               key={`${countdowns[countdownIndex].id}-${i}`}
                               className="inline-flex items-center justify-center w-9 h-12 bg-black/15 backdrop-blur-sm rounded-lg text-2xl font-bold font-mono text-white border border-white/20"
@@ -251,7 +266,13 @@ export function HomePage() {
                       key={i}
                       onClick={() => setCountdownIndex(i)}
                       className={`h-1 rounded-full transition-all ${
-                        i === countdownIndex ? 'w-4 bg-rose-400' : 'w-1 bg-rose-200/60'
+                        i === countdownIndex
+                          ? calculateDaysLeft(countdowns[i].target_date) < 0
+                            ? 'w-4 bg-orange-400'
+                            : 'w-4 bg-rose-400'
+                          : calculateDaysLeft(countdowns[i].target_date) < 0
+                          ? 'w-1 bg-orange-200/60'
+                          : 'w-1 bg-rose-200/60'
                       }`}
                     />
                   ))}
@@ -279,6 +300,22 @@ export function HomePage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
       >
+        <LocationMap
+          myLocation={getMyLocation(identity)}
+          otherLocation={getOtherLocation(identity)}
+          currentIdentity={identity}
+          onShareLocation={() => shareMyLocation(identity!)}
+          sharing={locationSharing}
+          loading={locationLoading}
+          onRefresh={fetchLocations}
+        />
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-pink-200/60 to-rose-200/60 flex items-center justify-center">
@@ -302,59 +339,69 @@ export function HomePage() {
             ))}
           </div>
         ) : recentPhotos.length > 0 ? (
-          <div className="relative">
-            <div className="grid grid-cols-3 gap-2">
-              {visiblePhotos.map((photo, i) => (
-                <motion.div
-                  key={photo.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <Link to="/photos">
-                    <div className="aspect-square rounded-xl overflow-hidden bg-sakura-light/20 flex items-center justify-center hover:ring-2 hover:ring-sakura/40 transition-all">
-                      <img
-                        src={photo.public_url || ''}
-                        alt={photo.caption || '照片'}
-                        className="max-w-full max-h-full object-contain"
-                      />
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-              {visiblePhotos.length < 3 &&
-                Array(3 - visiblePhotos.length)
-                  .fill(0)
-                  .map((_, i) => (
-                    <div
-                      key={`empty-${i}`}
-                      className="aspect-square rounded-xl bg-sakura-light/15 border-2 border-dashed border-sakura-light/50"
-                    />
+          <div className="relative overflow-hidden">
+            <AnimatePresence mode="popLayout">
+              <motion.div
+                key={photoStartIndex}
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -20, opacity: 0 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  {visiblePhotos.map((photo, i) => (
+                    <motion.div
+                      key={photo.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.05 }}
+                    >
+                      <Link to="/photos">
+                        <div className="aspect-square rounded-xl overflow-hidden bg-sakura-light/20 flex items-center justify-center hover:ring-2 hover:ring-sakura/40 transition-all">
+                          <img
+                            src={photo.public_url || ''}
+                            alt={photo.caption || '照片'}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        </div>
+                      </Link>
+                    </motion.div>
                   ))}
-            </div>
+                  {visiblePhotos.length < 3 &&
+                    Array(3 - visiblePhotos.length)
+                      .fill(0)
+                      .map((_, i) => (
+                        <div
+                          key={`empty-${i}`}
+                          className="aspect-square rounded-xl bg-sakura-light/15 border-2 border-dashed border-sakura-light/50"
+                        />
+                      ))}
+                </div>
+              </motion.div>
+            </AnimatePresence>
 
             {recentPhotos.length > 3 && (
               <div className="flex justify-center gap-1.5 mt-2.5">
                 <button
                   onClick={handlePhotoPrev}
-                  disabled={photoStartIndex === 0}
-                  className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-40"
+                  className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
                 >
                   <ChevronLeftIcon className="w-3.5 h-3.5" />
                 </button>
-                {Array.from({ length: Math.max(1, recentPhotos.length - 2) }).map((_, i) => (
+                {recentPhotos.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setPhotoStartIndex(i)}
                     className={`h-1.5 rounded-full transition-all self-center ${
-                      i === photoStartIndex ? 'w-4 bg-sakura-deep' : 'w-1.5 bg-sakura-light/60'
+                      i === photoStartIndex
+                        ? 'w-4 bg-sakura-deep'
+                        : 'w-1.5 bg-sakura-light/60'
                     }`}
                   />
                 ))}
                 <button
                   onClick={handlePhotoNext}
-                  disabled={photoStartIndex >= recentPhotos.length - 3}
-                  className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-40"
+                  className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
                 >
                   <ChevronRightIcon className="w-3.5 h-3.5" />
                 </button>
@@ -479,15 +526,7 @@ export function HomePage() {
                 <Link to="/notes" className="block">
                   <div className="bg-white rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow border border-gray-50">
                     <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-                          note.author === 'he'
-                            ? 'bg-blue-100 text-blue-600'
-                            : 'bg-sakura-light text-sakura-deep'
-                        }`}
-                      >
-                        {note.author === 'he' ? '他' : '她'}
-                      </span>
+                      <AuthorBadge identity={note.author} size="xs" />
                       <span className="text-[11px] text-gray-400">
                         {formatTimeAgo(note.created_at)}
                       </span>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Clock, Sparkles, Heart, Trash2, X } from 'lucide-react'
 import type { TimeCapsule, Identity } from '../../types'
+import { AuthorBadge } from '../ui/AuthorBadge'
 
 interface CapsuleCardProps {
   capsule: TimeCapsule
@@ -33,6 +34,30 @@ function calculateTimeLeft(unlockAt: string, now: Date): TimeLeft {
   return { days, hours, minutes, total: diff }
 }
 
+const VIEWED_KEY = 'capsule_viewed_ids'
+
+function getViewedIds(): Set<number> {
+  try {
+    const data = localStorage.getItem(VIEWED_KEY)
+    if (data) {
+      return new Set(JSON.parse(data))
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return new Set()
+}
+
+function saveViewedId(id: number) {
+  try {
+    const ids = getViewedIds()
+    ids.add(id)
+    localStorage.setItem(VIEWED_KEY, JSON.stringify([...ids]))
+  } catch {
+    // ignore storage errors
+  }
+}
+
 export function CapsuleCard({
   capsule,
   isUnlocked: initialUnlocked,
@@ -54,8 +79,8 @@ export function CapsuleCard({
 
   useEffect(() => {
     if (initialUnlocked) {
-      const viewed = localStorage.getItem(`capsule_viewed_${capsule.id}`)
-      if (!viewed) {
+      const viewedIds = getViewedIds()
+      if (!viewedIds.has(capsule.id)) {
         setHasNewUnlocked(true)
       }
     }
@@ -77,7 +102,7 @@ export function CapsuleCard({
 
     if (!showContent) {
       setIsAnimating(true)
-      localStorage.setItem(`capsule_viewed_${capsule.id}`, 'true')
+      saveViewedId(capsule.id)
       setHasNewUnlocked(false)
       setTimeout(() => {
         setShowContent(true)
@@ -188,15 +213,7 @@ export function CapsuleCard({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span
-                      className="px-2 py-0.5 rounded-full text-xs font-medium"
-                      style={{
-                        backgroundColor: primaryLight,
-                        color: primaryDeep,
-                      }}
-                    >
-                      {isHe ? '他' : '她'}
-                    </span>
+                    <AuthorBadge identity={capsule.created_by} />
                     {!isOwn && !initialUnlocked && (
                       <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
                         神秘信件
@@ -392,15 +409,7 @@ export function CapsuleCard({
             <div className="relative p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span
-                    className="px-2 py-0.5 rounded-full text-xs font-medium"
-                    style={{
-                      backgroundColor: primaryLight,
-                      color: primaryDeep,
-                    }}
-                  >
-                    {isHe ? '他' : '她'}
-                  </span>
+                  <AuthorBadge identity={capsule.created_by} />
                   <span className="text-xs text-gray-400">
                     {formatDate(capsule.created_at)} 寄出
                   </span>

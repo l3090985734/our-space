@@ -100,7 +100,17 @@ export function WishEditor({ isOpen, onClose, onSubmit, editing, submitting }: W
                   placeholder="比如：一起去看海"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none"
                   autoFocus
+                  maxLength={30}
                 />
+                <p className={`text-xs text-right mt-1 ${
+                  title.length >= 25
+                    ? 'text-red-500 font-medium'
+                    : title.length >= 20
+                    ? 'text-orange-500'
+                    : 'text-gray-400'
+                }`}>
+                  {title.length}/30
+                </p>
               </div>
 
               <div>
@@ -113,7 +123,17 @@ export function WishEditor({ isOpen, onClose, onSubmit, editing, submitting }: W
                   placeholder="说说这个愿望的小故事..."
                   rows={3}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none resize-none"
+                  maxLength={200}
                 />
+                <p className={`text-xs text-right mt-1 ${
+                  description.length >= 180
+                    ? 'text-red-500 font-medium'
+                    : description.length >= 150
+                    ? 'text-orange-500'
+                    : 'text-gray-400'
+                }`}>
+                  {description.length}/200
+                </p>
               </div>
 
               <button

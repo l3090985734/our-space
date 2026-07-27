@@ -75,6 +75,7 @@ export function compressImage(
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
     img.onload = () => {
       const canvas = document.createElement('canvas')
       let { width, height } = img
@@ -89,6 +90,7 @@ export function compressImage(
 
       const ctx = canvas.getContext('2d')
       if (!ctx) {
+        URL.revokeObjectURL(objectUrl)
         reject(new Error('Failed to get canvas context'))
         return
       }
@@ -98,6 +100,7 @@ export function compressImage(
       const mimeType = format === 'webp' ? 'image/webp' : 'image/jpeg'
       canvas.toBlob(
         (blob) => {
+          URL.revokeObjectURL(objectUrl)
           if (blob) {
             resolve(blob)
           } else {
@@ -108,8 +111,11 @@ export function compressImage(
         quality
       )
     }
-    img.onerror = () => reject(new Error('Failed to load image'))
-    img.src = URL.createObjectURL(file)
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Failed to load image'))
+    }
+    img.src = objectUrl
   })
 }
 
@@ -120,6 +126,7 @@ export function generateThumbnail(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
     img.onload = () => {
       const canvas = document.createElement('canvas')
       let { width, height } = img
@@ -141,15 +148,21 @@ export function generateThumbnail(
 
       const ctx = canvas.getContext('2d')
       if (!ctx) {
+        URL.revokeObjectURL(objectUrl)
         reject(new Error('Failed to get canvas context'))
         return
       }
 
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      resolve(canvas.toDataURL('image/jpeg', quality))
+      const dataUrl = canvas.toDataURL('image/jpeg', quality)
+      URL.revokeObjectURL(objectUrl)
+      resolve(dataUrl)
     }
-    img.onerror = () => reject(new Error('Failed to load image'))
-    img.src = URL.createObjectURL(file)
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Failed to load image'))
+    }
+    img.src = objectUrl
   })
 }
 
@@ -192,4 +205,13 @@ export function calculateDaysSince(startDate: string): number {
   
   const diffMs = now.getTime() - start.getTime()
   return Math.floor(diffMs / (1000 * 60 * 60 * 24))
+}
+
+export function formatDate(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
 }

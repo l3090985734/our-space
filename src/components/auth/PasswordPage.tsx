@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Heart, Lock } from 'lucide-react'
 import { sha256 } from '../../lib/utils'
@@ -17,6 +17,34 @@ export function PasswordPage({ password, onSuccess }: PasswordPageProps) {
   const [error, setError] = useState(false)
   const [shake, setShake] = useState(false)
   const [verifying, setVerifying] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handleFocus = () => {
+      setTimeout(() => {
+        inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 300)
+    }
+
+    const input = inputRef.current
+    input?.addEventListener('focus', handleFocus)
+    return () => input?.removeEventListener('focus', handleFocus)
+  }, [])
+
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const handleResize = () => {
+      if (document.activeElement === inputRef.current) {
+        setTimeout(() => {
+          inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 100)
+      }
+    }
+    viewport.addEventListener('resize', handleResize)
+    return () => viewport.removeEventListener('resize', handleResize)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,6 +103,7 @@ export function PasswordPage({ password, onSuccess }: PasswordPageProps) {
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
+                ref={inputRef}
                 type="password"
                 value={input}
                 onChange={(e) => {

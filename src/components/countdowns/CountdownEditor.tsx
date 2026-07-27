@@ -80,6 +80,15 @@ export function CountdownEditor({
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sakura focus:ring-2 focus:ring-sakura/20 outline-none"
                   maxLength={30}
                 />
+                <p className={`text-xs text-right mt-1 ${
+                  title.length >= 25
+                    ? 'text-red-500 font-medium'
+                    : title.length >= 20
+                    ? 'text-orange-500'
+                    : 'text-gray-400'
+                }`}>
+                  {title.length}/30
+                </p>
               </div>
 
               <div>

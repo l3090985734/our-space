@@ -8,9 +8,10 @@ interface CountdownCardProps {
   countdown: Countdown
   onEdit: () => void
   onDelete: () => void
+  deleting?: boolean
 }
 
-export function CountdownCard({ countdown, onEdit, onDelete }: CountdownCardProps) {
+export function CountdownCard({ countdown, onEdit, onDelete, deleting }: CountdownCardProps) {
   const [showActions, setShowActions] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const daysLeft = calculateDaysLeft(countdown.target_date)
@@ -131,26 +132,27 @@ export function CountdownCard({ countdown, onEdit, onDelete }: CountdownCardProp
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                确认删除
+                删除这个倒计时？
               </h3>
-              <p className="text-gray-500 mb-6">
-                确定要删除「{countdown.title}」吗？
+              <p className="text-gray-500 text-sm mb-6">
+                删除后就找不回来啦，确定要删除吗？
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
                   className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-full font-medium hover:bg-gray-200 transition-colors"
                 >
-                  取消
+                  再想想
                 </button>
                 <button
                   onClick={() => {
                     onDelete()
                     setShowDeleteConfirm(false)
                   }}
-                  className="flex-1 py-2.5 bg-red-500 text-white rounded-full font-medium hover:bg-red-600 transition-colors"
+                  disabled={deleting}
+                  className="flex-1 py-2.5 bg-red-500 text-white rounded-full font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
                 >
-                  删除
+                  {deleting ? '删除中...' : '删除'}
                 </button>
               </div>
             </motion.div>

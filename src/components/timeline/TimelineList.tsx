@@ -3,12 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Edit3, Trash2, Heart } from 'lucide-react'
 import { TimelineEditor } from './TimelineEditor'
 import { useTimeline } from '../../hooks/useTimeline'
+import { useIdentity } from '../../hooks/useIdentity'
 import type { TimelineEvent } from '../../types'
 import { calculateDaysSince } from '../../lib/utils'
 import { TimelineSkeleton } from '../ui/PageSkeletons'
+import { AuthorBadge } from '../ui/AuthorBadge'
 
 export function TimelineList() {
   const { events, loading, createEvent, updateEvent, deleteEvent } = useTimeline()
+  const { identity } = useIdentity()
   const [showEditor, setShowEditor] = useState(false)
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -20,7 +23,7 @@ export function TimelineList() {
       if (editingEvent) {
         await updateEvent(editingEvent.id, title, eventDate, description)
       } else {
-        await createEvent(title, eventDate, description)
+        await createEvent(title, eventDate, description, identity || undefined)
       }
     } finally {
       setSubmitting(false)
@@ -129,6 +132,11 @@ export function TimelineList() {
                     <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
                       {event.description}
                     </p>
+                  )}
+                  {event.created_by && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <AuthorBadge identity={event.created_by} variant="record" />
+                    </div>
                   )}
                 </div>
               </motion.div>

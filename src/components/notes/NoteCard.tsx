@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, MessageCircle, Send } from 'lucide-react'
 import type { Note } from '../../types'
 import { formatTimeAgo } from '../../lib/utils'
+import { AuthorBadge } from '../ui/AuthorBadge'
 
 interface NoteCardProps {
   note: Note
@@ -24,12 +25,19 @@ export function NoteCard({
   const [showReplyInput, setShowReplyInput] = useState(false)
   const [replyContent, setReplyContent] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const repliesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (showReplyInput && inputRef.current) {
       inputRef.current.focus()
     }
   }, [showReplyInput])
+
+  useEffect(() => {
+    if (isExpanded && repliesEndRef.current) {
+      repliesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [replies.length, isExpanded])
 
   const handleSubmitReply = () => {
     if (!replyContent.trim() || replyLoading) return
@@ -38,6 +46,8 @@ export function NoteCard({
     setShowReplyInput(false)
   }
 
+  const latestReply = replies.length > 0 ? replies[replies.length - 1] : null
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -45,15 +55,7 @@ export function NoteCard({
       className="bg-white rounded-2xl p-4 shadow-sm"
     >
       <div className="flex items-center gap-2 mb-3">
-        <span
-          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-            note.author === 'he'
-              ? 'bg-blue-100 text-blue-600'
-              : 'bg-sakura-light text-sakura-deep'
-          }`}
-        >
-          {note.author === 'he' ? '他' : '她'}
-        </span>
+        <AuthorBadge identity={note.author} />
         <span className="text-xs text-gray-400">
           {formatTimeAgo(note.created_at)}
         </span>
@@ -67,7 +69,7 @@ export function NoteCard({
         <button
           onClick={() => {
             setShowReplyInput(!showReplyInput)
-            if (!isExpanded) {
+            if (!isExpanded && replies.length > 0) {
               onToggleExpand()
             }
           }}
@@ -82,13 +84,30 @@ export function NoteCard({
             onClick={onToggleExpand}
             className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <span>{isExpanded ? '收起' : '展开回复'}</span>
+            <span>{isExpanded ? '收起' : replies.length > 1 ? `查看全部${replies.length}条回复` : '查看回复'}</span>
             <motion.div animate={{ rotate: isExpanded ? 180 : 0 }}>
               <ChevronDown className="w-4 h-4" />
             </motion.div>
           </button>
         )}
       </div>
+
+      {latestReply && !isExpanded && (
+        <div
+          onClick={onToggleExpand}
+          className="mt-3 pl-4 border-l-2 border-sakura-light cursor-pointer hover:bg-sakura-light/20 -mx-2 px-2 py-2 rounded-lg transition-colors"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <AuthorBadge identity={latestReply.author} size="xs" />
+            <span className="text-[10px] text-gray-400">
+              {formatTimeAgo(latestReply.created_at)}
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 truncate">
+            {latestReply.content}
+          </p>
+        </div>
+      )}
 
       <AnimatePresence>
         {showReplyInput && (
@@ -138,15 +157,7 @@ export function NoteCard({
               {replies.map((reply) => (
                 <div key={reply.id} className="pl-4 border-l-2 border-sakura-light">
                   <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                        reply.author === 'he'
-                          ? 'bg-blue-100 text-blue-600'
-                          : 'bg-sakura-light text-sakura-deep'
-                      }`}
-                    >
-                      {reply.author === 'he' ? '他' : '她'}
-                    </span>
+                    <AuthorBadge identity={reply.author} size="xs" />
                     <span className="text-xs text-gray-400">
                       {formatTimeAgo(reply.created_at)}
                     </span>
@@ -156,6 +167,7 @@ export function NoteCard({
                   </p>
                 </div>
               ))}
+              <div ref={repliesEndRef} />
             </div>
           </motion.div>
         )}

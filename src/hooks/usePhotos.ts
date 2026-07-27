@@ -67,6 +67,7 @@ export function usePhotos() {
 
   const uploadPhoto = useCallback(
     async (file: File, caption: string, uploadedBy: Identity) => {
+      let uploadedPath: string | null = null
       try {
         setUploading(true)
         setError(null)
@@ -105,6 +106,7 @@ export function usePhotos() {
           })
 
         if (uploadError) throw uploadError
+        uploadedPath = filePath
 
         const { error: dbError } = await supabase.from('photos').insert({
           storage_path: filePath,
@@ -116,6 +118,13 @@ export function usePhotos() {
 
         await fetchPhotos()
       } catch (e: any) {
+        if (uploadedPath) {
+          try {
+            await supabase.storage.from('photos').remove([uploadedPath])
+          } catch (cleanupError) {
+            console.error('Failed to clean up orphaned file:', cleanupError)
+          }
+        }
         setError(translateError(e.message))
         throw e
       } finally {
@@ -136,12 +145,6 @@ export function usePhotos() {
           return
         }
 
-        const { error: storageError } = await supabase.storage
-          .from('photos')
-          .remove([photo.storage_path])
-
-        if (storageError) throw storageError
-
         const { error: dbError } = await supabase
           .from('photos')
           .delete()
@@ -150,6 +153,14 @@ export function usePhotos() {
         if (dbError) throw dbError
 
         setPhotos((prev) => prev.filter((p) => p.id !== photo.id))
+
+        const { error: storageError } = await supabase.storage
+          .from('photos')
+          .remove([photo.storage_path])
+
+        if (storageError) {
+          console.error('Failed to delete storage file (orphaned):', storageError)
+        }
       } catch (e: any) {
         setError(translateError(e.message))
         throw e

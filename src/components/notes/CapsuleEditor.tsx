@@ -210,6 +210,15 @@ export function CapsuleEditor({
                       className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 focus:border-sakura focus:ring-4 focus:ring-sakura/10 outline-none transition-all bg-gray-50/50 focus:bg-white"
                       maxLength={50}
                     />
+                    <div className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs ${
+                      title.length >= 45
+                        ? 'text-red-500 font-medium'
+                        : title.length >= 35
+                        ? 'text-orange-500'
+                        : 'text-gray-400'
+                    }`}>
+                      {title.length}/50
+                    </div>
                   </div>
                 </div>
 
@@ -227,7 +236,13 @@ export function CapsuleEditor({
                       className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 focus:border-sakura focus:ring-4 focus:ring-sakura/10 outline-none transition-all resize-none min-h-36 bg-gray-50/50 focus:bg-white"
                       maxLength={1000}
                     />
-                    <div className="absolute bottom-3 right-4 text-xs text-gray-400">
+                    <div className={`absolute bottom-3 right-4 text-xs ${
+                      content.length >= 950
+                        ? 'text-red-500 font-medium'
+                        : content.length >= 800
+                        ? 'text-orange-500'
+                        : 'text-gray-400'
+                    }`}>
                       {content.length}/1000
                     </div>
                   </div>

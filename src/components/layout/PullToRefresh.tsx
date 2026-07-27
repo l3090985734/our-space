@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, type ReactNode } from 'react'
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
 import { RefreshCw } from 'lucide-react'
+import { useToast } from '../ui/Toast'
 
 interface PullToRefreshProps {
   onRefresh: () => Promise<void>
@@ -12,6 +13,7 @@ const MAX_PULL = 120
 
 export function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
   const [refreshing, setRefreshing] = useState(false)
+  const { showToast } = useToast()
   const startY = useRef(0)
   const pulling = useRef(false)
   const y = useMotionValue(0)
@@ -52,6 +54,9 @@ export function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
       setRefreshing(true)
       try {
         await onRefresh()
+        showToast('刷新成功～ ✨', 'success')
+      } catch (e: any) {
+        showToast(e.message || '刷新失败，请重试', 'error')
       } finally {
         setRefreshing(false)
         animate(y, 0, { duration: 0.3 })

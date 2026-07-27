@@ -145,7 +145,13 @@ export function NoteEditor({
             />
 
             <div className="flex items-center justify-between mt-4">
-              <span className="text-xs text-gray-400">
+              <span className={`text-xs ${
+                content.length >= 490
+                  ? 'text-red-500 font-medium'
+                  : content.length >= 450
+                  ? 'text-orange-500'
+                  : 'text-gray-400'
+              }`}>
                 {content.length}/500
               </span>
               <button
