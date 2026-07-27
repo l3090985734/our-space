@@ -42,6 +42,23 @@ export function useNotes() {
           setNotes(pageData)
           setHasMore(allNotes.length > PAGE_SIZE)
         }
+
+        const allReplies = demoStorage.getNotes().filter((n) => n.parent_id !== null)
+        const repliesMap: Record<number, Note[]> = {}
+        allReplies.forEach((reply) => {
+          const parentId = reply.parent_id!
+          if (!repliesMap[parentId]) {
+            repliesMap[parentId] = []
+          }
+          repliesMap[parentId].push(reply)
+        })
+        Object.keys(repliesMap).forEach((key) => {
+          repliesMap[Number(key)].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          )
+        })
+        setReplies((prev) => ({ ...prev, ...repliesMap }))
+
         pageRef.current = page
         return
       }
@@ -66,6 +83,27 @@ export function useNotes() {
       } else {
         setNotes(notesData)
         setHasMore(notesData.length === PAGE_SIZE)
+      }
+
+      const noteIds = notesData.map((n: Note) => n.id)
+      if (noteIds.length > 0) {
+        const { data: repliesData } = await supabase
+          .from('notes')
+          .select('*')
+          .in('parent_id', noteIds)
+          .order('created_at', { ascending: true })
+
+        if (repliesData) {
+          const repliesMap: Record<number, Note[]> = {}
+          repliesData.forEach((reply: Note) => {
+            const parentId = reply.parent_id!
+            if (!repliesMap[parentId]) {
+              repliesMap[parentId] = []
+            }
+            repliesMap[parentId].push(reply)
+          })
+          setReplies((prev) => ({ ...prev, ...repliesMap }))
+        }
       }
 
       pageRef.current = page
