@@ -56,11 +56,7 @@ export function useLocation() {
       setSharing(true)
       try {
         if (!navigator.geolocation) {
-          return { success: false, error: '当前浏览器不支持定位功能' }
-        }
-
-        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-          return { success: false, error: '定位功能需要 HTTPS 环境才能使用' }
+          return { success: false, error: '当前环境不支持定位功能，请使用 HTTPS 环境访问' }
         }
 
         const position = await new Promise<GeolocationPosition>(
