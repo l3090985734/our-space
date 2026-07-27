@@ -1,4 +1,4 @@
-import type { Note, Photo, Countdown, Identity, TimelineEvent, Wish, AppSettings, TimeCapsule, Location } from '../types'
+import type { Note, Photo, Countdown, Identity, TimelineEvent, Wish, AppSettings, TimeCapsule } from '../types'
 import { ANNIVERSARY_DATE } from './config'
 
 const KEYS = {
@@ -9,7 +9,6 @@ const KEYS = {
   WISHES: 'our-space-wishes',
   SETTINGS: 'our-space-settings',
   CAPSULES: 'our-space-capsules',
-  LOCATIONS: 'our-space-locations',
 } as const
 
 function getFromStorage<T>(key: string, defaultValue: T): T {
@@ -283,42 +282,6 @@ export const demoStorage = {
     )
   },
 
-  getLocations(): Location[] {
-    return getFromStorage<Location[]>(KEYS.LOCATIONS, [])
-  },
-
-  getLocationByIdentity(identity: Identity): Location | null {
-    const locations = this.getLocations()
-    return locations.find((l) => l.identity === identity) || null
-  },
-
-  upsertLocation(identity: Identity, latitude: number, longitude: number): Location {
-    const locations = this.getLocations()
-    const existingIndex = locations.findIndex((l) => l.identity === identity)
-    const now = new Date().toISOString()
-
-    if (existingIndex >= 0) {
-      locations[existingIndex] = {
-        ...locations[existingIndex],
-        latitude,
-        longitude,
-        updated_at: now,
-      }
-    } else {
-      const newLocation: Location = {
-        id: generateId(),
-        identity,
-        latitude,
-        longitude,
-        updated_at: now,
-      }
-      locations.push(newLocation)
-    }
-
-    saveToStorage(KEYS.LOCATIONS, locations)
-    return locations.find((l) => l.identity === identity)!
-  },
-
   getSettings(): AppSettings {
     return getFromStorage<AppSettings>(KEYS.SETTINGS, {
       anniversary_date: ANNIVERSARY_DATE,
@@ -422,9 +385,5 @@ export function initDemoData() {
         url
       )
     })
-  }
-  if (demoStorage.getLocations().length === 0) {
-    demoStorage.upsertLocation('he', 39.9087, 116.3975)
-    demoStorage.upsertLocation('she', 31.2304, 121.4737)
   }
 }

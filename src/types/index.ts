@@ -59,11 +59,3 @@ export interface TimeCapsule {
   created_at: string
   is_unlocked?: boolean
 }
-
-export interface Location {
-  id: number
-  identity: Identity
-  latitude: number
-  longitude: number
-  updated_at: string
-}

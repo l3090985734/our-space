@@ -64,15 +64,6 @@ CREATE TABLE time_capsules (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 位置共享表
-CREATE TABLE locations (
-  id          BIGSERIAL PRIMARY KEY,
-  identity    TEXT NOT NULL UNIQUE CHECK (identity IN ('he', 'she')),
-  latitude    DOUBLE PRECISION NOT NULL,
-  longitude   DOUBLE PRECISION NOT NULL,
-  updated_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
 -- 插入默认设置
 INSERT INTO app_settings (id, anniversary_date) VALUES (1, '2024-01-01') ON CONFLICT DO NOTHING;
 
@@ -84,7 +75,6 @@ CREATE INDEX idx_countdowns_target_date ON countdowns(target_date);
 CREATE INDEX idx_timeline_events_date ON timeline_events(event_date DESC);
 CREATE INDEX idx_wishes_completed ON wishes(completed, created_at DESC);
 CREATE INDEX idx_time_capsules_unlock ON time_capsules(unlock_at DESC);
-CREATE INDEX idx_locations_identity ON locations(identity);
 
 -- RLS 策略（允许所有人读写，因为链接只分享给女朋友）
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
@@ -107,6 +97,3 @@ CREATE POLICY "Allow all on settings" ON app_settings FOR ALL USING (true) WITH 
 
 ALTER TABLE time_capsules ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all on time_capsules" ON time_capsules FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all on locations" ON locations FOR ALL USING (true) WITH CHECK (true);

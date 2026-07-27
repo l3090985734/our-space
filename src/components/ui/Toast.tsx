@@ -107,7 +107,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               {toast.type === 'loading' && (
                 <Loader2 className="w-5 h-5 text-sakura animate-spin flex-shrink-0" />
               )}
-              <span className="text-sm text-gray-700">{toast.message}</span>
+              <span className="text-sm text-gray-700 whitespace-pre-line">{toast.message}</span>
               {toast.type !== 'loading' && (
                 <button
                   onClick={() => hideToast(toast.id)}

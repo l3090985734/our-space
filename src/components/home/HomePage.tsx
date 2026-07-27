@@ -21,10 +21,8 @@ import { useNotes } from '../../hooks/useNotes'
 import { useWishes } from '../../hooks/useWishes'
 import { useIdentity } from '../../hooks/useIdentity'
 import { useSettings } from '../../hooks/useSettings'
-import { useLocation } from '../../hooks/useLocation'
 import { calculateDaysLeft, calculateDaysSince, formatTimeAgo } from '../../lib/utils'
 import { Skeleton, SkeletonCard } from '../ui/Skeleton'
-import { LocationMap } from '../location/LocationMap'
 import { AuthorBadge } from '../ui/AuthorBadge'
 
 export function HomePage() {
@@ -35,14 +33,6 @@ export function HomePage() {
   const { wishes, loading: wishesLoading, toggleWish } = useWishes()
   const { identity } = useIdentity()
   const { settings, updateAnniversary } = useSettings()
-  const {
-    loading: locationLoading,
-    sharing: locationSharing,
-    getOtherLocation,
-    getMyLocation,
-    shareMyLocation,
-    fetchLocations,
-  } = useLocation()
   const [showEditor, setShowEditor] = useState(false)
   const [editDate, setEditDate] = useState(settings.anniversary_date)
   const [saving, setSaving] = useState(false)
@@ -299,22 +289,6 @@ export function HomePage() {
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
-      >
-        <LocationMap
-          myLocation={getMyLocation(identity)}
-          otherLocation={getOtherLocation(identity)}
-          currentIdentity={identity}
-          onShareLocation={() => shareMyLocation(identity!)}
-          sharing={locationSharing}
-          loading={locationLoading}
-          onRefresh={fetchLocations}
-        />
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
       >
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
