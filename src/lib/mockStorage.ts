@@ -1,9 +1,10 @@
-import type { Note, Photo, Countdown, Identity, TimelineEvent, Wish, AppSettings, TimeCapsule } from '../types'
+import type { Note, Photo, Countdown, Identity, TimelineEvent, Wish, AppSettings, TimeCapsule, PhotoComment } from '../types'
 import { ANNIVERSARY_DATE } from './config'
 
 const KEYS = {
   NOTES: 'our-space-notes',
   PHOTOS: 'our-space-photos',
+  PHOTO_COMMENTS: 'our-space-photo-comments',
   COUNTDOWNS: 'our-space-countdowns',
   TIMELINE: 'our-space-timeline',
   WISHES: 'our-space-wishes',
@@ -105,6 +106,38 @@ export const demoStorage = {
       p.id === photoId ? { ...p, caption } : p
     )
     saveToStorage(KEYS.PHOTOS, updated)
+  },
+
+  getPhotoComments(photoId: number): PhotoComment[] {
+    const all = getFromStorage<PhotoComment[]>(KEYS.PHOTO_COMMENTS, [])
+    return all
+      .filter((c) => c.photo_id === photoId)
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      )
+  },
+
+  addPhotoComment(photoId: number, author: Identity, content: string): PhotoComment {
+    const all = getFromStorage<PhotoComment[]>(KEYS.PHOTO_COMMENTS, [])
+    const newComment: PhotoComment = {
+      id: generateId(),
+      photo_id: photoId,
+      author,
+      content,
+      created_at: new Date().toISOString(),
+    }
+    all.push(newComment)
+    saveToStorage(KEYS.PHOTO_COMMENTS, all)
+    return newComment
+  },
+
+  deletePhotoComment(commentId: number) {
+    const all = getFromStorage<PhotoComment[]>(KEYS.PHOTO_COMMENTS, [])
+    saveToStorage(
+      KEYS.PHOTO_COMMENTS,
+      all.filter((c) => c.id !== commentId)
+    )
   },
 
   getCountdowns(): Countdown[] {

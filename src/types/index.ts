@@ -59,3 +59,11 @@ export interface TimeCapsule {
   created_at: string
   is_unlocked?: boolean
 }
+
+export interface PhotoComment {
+  id: number
+  photo_id: number
+  author: Identity
+  content: string
+  created_at: string
+}

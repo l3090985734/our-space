@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Trash2, Edit3, Check, X, Plus, ZoomIn, } from 'lucide-react'
 import { formatTimeAgo } from '../../lib/utils'
 import { PhotoUpload } from './PhotoUpload'
+import { PhotoCommentSection } from './PhotoCommentSection'
 import { PhotosSkeleton } from '../ui/PageSkeletons'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useIdentity } from '../../hooks/useIdentity'
@@ -246,6 +247,8 @@ export function PhotoWall() {
           </p>
         )}
       </div>
+
+      <PhotoCommentSection photoId={currentPhoto?.id} />
 
       <div className="flex justify-center gap-1.5 mt-4 flex-wrap">
         {photos.map((_, index) => (
