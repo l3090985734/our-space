@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Plus } from 'lucide-react'
 import { NoteCard } from './NoteCard'
 import { NoteEditor } from './NoteEditor'
@@ -9,7 +9,8 @@ import { SkeletonText } from '../ui/Skeleton'
 import type { Note } from '../../types'
 
 export function NoteList() {
-  const { notes, loading, error, createNote, replies, toggleExpand, expandedNoteId } = useNotes()
+  const { notes, loading, loadingMore, hasMore, loadMore, error, createNote, replies, toggleExpand, expandedNoteId } = useNotes()
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const { identity } = useIdentity()
   const { showToast } = useToast()
   const [showEditor, setShowEditor] = useState(false)
@@ -53,6 +54,28 @@ export function NoteList() {
     }
   }
 
+  // 无限滚动：IntersectionObserver 监听底部哨兵节点
+  // 进入视口前 100px 预触发；正在加载中 / 没有更多数据 / 首屏 loading 时不重复触发
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    if (typeof IntersectionObserver === 'undefined') {
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && hasMore && !loadingMore && !loading) {
+            loadMore()
+          }
+        })
+      },
+      { threshold: 0.1, rootMargin: '100px 0px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, loading, loadMore])
+
   return (
     <div className="space-y-4">
       {loading && (
@@ -95,6 +118,23 @@ export function NoteList() {
           <p className="text-red-400 text-sm">{error}</p>
         </div>
       )}
+
+      {/* 无限滚动哨兵节点 + 加载更多指示器 */}
+      <div ref={sentinelRef} className="py-4">
+        {loadingMore && (
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 text-gray-400 text-sm">
+              <div className="w-5 h-5 border-2 border-sakura/30 border-t-sakura rounded-full animate-spin" />
+              <span>加载更多纸条...</span>
+            </div>
+          </div>
+        )}
+        {!hasMore && mainNotes.length > 0 && (
+          <div className="text-center text-gray-300 text-xs py-2">
+            — 已经到底啦 —
+          </div>
+        )}
+      </div>
 
       <button
         onClick={() => setShowEditor(true)}
