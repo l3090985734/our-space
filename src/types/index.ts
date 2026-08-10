@@ -17,6 +17,10 @@ export interface Photo {
   created_at: string
   public_url?: string
   thumbnail?: string
+  /** 上传中时的乐观占位状态（undefined 表示正常、上传完成） */
+  upload_status?: 'uploading' | 'failed'
+  /** 上传中用本地预览 dataURL 立刻显示，不需要等 Storage 完成 */
+  local_preview_url?: string
 }
 
 export interface Countdown {

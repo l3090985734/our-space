@@ -67,7 +67,7 @@ function sha256Pure(message: string): string {
   return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('')
 }
 
-export function compressImage(
+export async function compressImage(
   file: File,
   maxWidth = 1920,
   quality = 0.8,
@@ -75,44 +75,114 @@ export function compressImage(
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    img.decoding = 'async'
     const objectUrl = URL.createObjectURL(file)
+    const cleanup = () => URL.revokeObjectURL(objectUrl)
+
+    const done = () => {
+      try {
+        let { width, height } = img
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width)
+          width = maxWidth
+        }
+        // 避免超长图导致 canvas 显存爆炸（Safari 限制 ~4096px 高）
+        const maxSafeHeight = 4096
+        if (height > maxSafeHeight) {
+          width = Math.round((width * maxSafeHeight) / height)
+          height = maxSafeHeight
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+
+        const ctx = canvas.getContext('2d', { alpha: format !== 'jpeg' })
+        if (!ctx) {
+          cleanup()
+          reject(new Error('Failed to get canvas context'))
+          return
+        }
+
+        // JPEG 背景填白，避免透明转黑色
+        if (format === 'jpeg') {
+          ctx.fillStyle = '#ffffff'
+          ctx.fillRect(0, 0, width, height)
+        }
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(img, 0, 0, width, height)
+
+        const mimeType = format === 'webp' ? 'image/webp' : 'image/jpeg'
+        canvas.toBlob(
+          (blob) => {
+            cleanup()
+            if (blob) {
+              resolve(blob)
+            } else {
+              // fallback：当 Safari 不支持 webp toBlob 时用 jpeg 兜底
+              canvas.toBlob(
+                (fallbackBlob) => {
+                  if (fallbackBlob) resolve(fallbackBlob)
+                  else reject(new Error('Failed to compress image'))
+                },
+                'image/jpeg',
+                0.85
+              )
+            }
+          },
+          mimeType,
+          quality
+        )
+      } catch (err) {
+        cleanup()
+        reject(err instanceof Error ? err : new Error(String(err)))
+      }
+    }
+
+    img.onload = () => requestIdleCallback?.(done, { timeout: 120 }) ?? done()
+    img.onerror = () => {
+      cleanup()
+      reject(new Error('Failed to load image'))
+    }
+    img.src = objectUrl
+  })
+}
+
+/**
+ * 快速生成 400px 低质量预览图（<100KB），用于用户选图后 200ms 内渲染
+ */
+export async function fastPreview(file: File, maxWidth = 400): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.decoding = 'async'
+    const objectUrl = URL.createObjectURL(file)
+    const cleanup = () => URL.revokeObjectURL(objectUrl)
+
     img.onload = () => {
-      const canvas = document.createElement('canvas')
-      let { width, height } = img
-
-      if (width > maxWidth) {
-        height = (height * maxWidth) / width
-        width = maxWidth
+      try {
+        let { width, height } = img
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width)
+          width = maxWidth
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('no canvas ctx')
+        ctx.imageSmoothingQuality = 'low'
+        ctx.drawImage(img, 0, 0, width, height)
+        cleanup()
+        // 直接返回 dataURL，用于预览立刻显示（体积小不卡 UI）
+        resolve(canvas.toDataURL('image/jpeg', 0.55))
+      } catch (err) {
+        cleanup()
+        reject(err instanceof Error ? err : new Error(String(err)))
       }
-
-      canvas.width = width
-      canvas.height = height
-
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        URL.revokeObjectURL(objectUrl)
-        reject(new Error('Failed to get canvas context'))
-        return
-      }
-
-      ctx.drawImage(img, 0, 0, width, height)
-
-      const mimeType = format === 'webp' ? 'image/webp' : 'image/jpeg'
-      canvas.toBlob(
-        (blob) => {
-          URL.revokeObjectURL(objectUrl)
-          if (blob) {
-            resolve(blob)
-          } else {
-            reject(new Error('Failed to compress image'))
-          }
-        },
-        mimeType,
-        quality
-      )
     }
     img.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
+      cleanup()
       reject(new Error('Failed to load image'))
     }
     img.src = objectUrl
@@ -126,43 +196,148 @@ export function generateThumbnail(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    img.decoding = 'async'
     const objectUrl = URL.createObjectURL(file)
+    const cleanup = () => URL.revokeObjectURL(objectUrl)
+
     img.onload = () => {
-      const canvas = document.createElement('canvas')
-      let { width, height } = img
-
-      if (width > height) {
-        if (width > maxSize) {
-          height = (height * maxSize) / width
-          width = maxSize
+      try {
+        let { width, height } = img
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width)
+            width = maxSize
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height)
+            height = maxSize
+          }
         }
-      } else {
-        if (height > maxSize) {
-          width = (width * maxSize) / height
-          height = maxSize
-        }
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(1, Math.floor(width))
+        canvas.height = Math.max(1, Math.floor(height))
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('no canvas ctx')
+        ctx.imageSmoothingQuality = 'low'
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        cleanup()
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      } catch (err) {
+        cleanup()
+        reject(err instanceof Error ? err : new Error(String(err)))
       }
-
-      canvas.width = Math.floor(width)
-      canvas.height = Math.floor(height)
-
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        URL.revokeObjectURL(objectUrl)
-        reject(new Error('Failed to get canvas context'))
-        return
-      }
-
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      const dataUrl = canvas.toDataURL('image/jpeg', quality)
-      URL.revokeObjectURL(objectUrl)
-      resolve(dataUrl)
     }
     img.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
+      cleanup()
       reject(new Error('Failed to load image'))
     }
     img.src = objectUrl
+  })
+}
+
+/** 上传进度事件回调 */
+export type UploadProgress = {
+  /** 0-100 */
+  percent: number
+  /** 已上传字节 */
+  loaded: number
+  /** 总字节 */
+  total: number
+  /** 当前速度 bytes/s（EMA 平滑） */
+  speedBps: number
+  /** 预估剩余秒数 */
+  etaSec: number
+  /** 已耗时秒数 */
+  elapsedSec: number
+}
+
+export function formatBytes(b: number): string {
+  if (b < 1024) return `${b} B`
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
+  if (b < 1024 * 1024 * 1024) return `${(b / 1024 / 1024).toFixed(2)} MB`
+  return `${(b / 1024 / 1024 / 1024).toFixed(2)} GB`
+}
+
+export function formatSeconds(sec: number): string {
+  if (!isFinite(sec) || sec < 0) return '--'
+  if (sec < 60) return `${Math.ceil(sec)} 秒`
+  const m = Math.floor(sec / 60)
+  const s = Math.ceil(sec % 60)
+  return `${m}分${s.toString().padStart(2, '0')}秒`
+}
+
+/** 基于 xhr 上传 + 进度回调（比 supabase-js 的 upload 多出 progress） */
+export async function xhrUploadWithProgress(
+  uploadUrl: string,
+  supabaseAnonKey: string,
+  file: Blob,
+  _contentType: string,
+  onProgress?: (p: UploadProgress) => void,
+  signal?: AbortSignal
+): Promise<{ path: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    let lastLoaded = 0
+    let lastTs = Date.now()
+    // 指数移动平均，避免速度数字跳来跳去
+    let emaSpeed = 0
+    const alpha = 0.35
+    const startTs = Date.now()
+
+    signal?.addEventListener('abort', () => {
+      try { xhr.abort() } catch { /* ignore */ }
+      reject(new DOMException('Aborted', 'AbortError'))
+    })
+
+    xhr.upload.addEventListener('progress', (ev) => {
+      if (ev.lengthComputable) {
+        const now = Date.now()
+        const dt = Math.max(1, (now - lastTs) / 1000)
+        const instant = ((ev.loaded - lastLoaded) / dt)
+        emaSpeed = emaSpeed === 0 ? instant : alpha * instant + (1 - alpha) * emaSpeed
+        lastLoaded = ev.loaded
+        lastTs = now
+        const remainingBytes = Math.max(0, ev.total - ev.loaded)
+        onProgress?.({
+          percent: ev.total === 0 ? 0 : Math.min(100, Math.round((ev.loaded / ev.total) * 100)),
+          loaded: ev.loaded,
+          total: ev.total,
+          speedBps: Math.round(emaSpeed),
+          etaSec: emaSpeed > 0 ? Math.round(remainingBytes / emaSpeed) : 0,
+          elapsedSec: Math.round((now - startTs) / 1000),
+        })
+      }
+    })
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const json = JSON.parse(xhr.responseText || '{}')
+          resolve({ path: json?.Key || json?.path || (uploadUrl.includes('/object/') ? uploadUrl.split('/object/')[1] : '') })
+        } catch {
+          resolve({ path: '' })
+        }
+      } else {
+        let msg = xhr.statusText || `HTTP ${xhr.status}`
+        try {
+          const json = JSON.parse(xhr.responseText || '{}')
+          if (json?.error) msg = typeof json.error === 'string' ? json.error : JSON.stringify(json.error)
+          if (json?.msg) msg = json.msg
+        } catch { /* ignore parse fail */ }
+        reject(new Error(msg))
+      }
+    })
+    xhr.addEventListener('error', () => reject(new Error('网络错误，上传失败')))
+    xhr.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+
+    xhr.open('POST', uploadUrl, true)
+    xhr.setRequestHeader('Authorization', `Bearer ${supabaseAnonKey}`)
+    xhr.setRequestHeader('apikey', supabaseAnonKey)
+    // 用 multipart 避免 Supabase S3 presign 复杂度，用 storage API 的 object 端点（file field 必须叫 "file"）
+    const form = new FormData()
+    form.append('file', file, 'image.webp')
+    xhr.send(form)
   })
 }
 

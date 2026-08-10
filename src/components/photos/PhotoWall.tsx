@@ -1,15 +1,132 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Trash2, Edit3, Check, X, Plus, ZoomIn, } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, Edit3, Check, X, Plus, ZoomIn, AlertTriangle } from 'lucide-react'
 import { formatTimeAgo } from '../../lib/utils'
 import { PhotoUpload } from './PhotoUpload'
 import { PhotoCommentSection } from './PhotoCommentSection'
 import { PhotosSkeleton } from '../ui/PageSkeletons'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useIdentity } from '../../hooks/useIdentity'
+import type { UploadProgress } from '../../lib/utils'
+
+/** 自定义 IntersectionObserver Hook：图片进入视口前 200px 才加载，避免同时请求几十张大图 */
+function useLazyLoadWithObserver<T extends HTMLElement = HTMLElement>(
+  threshold = 0.05,
+  rootMargin = '200px 0px'
+) {
+  const ref = useRef<T | null>(null)
+  const [inView, setInView] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (typeof IntersectionObserver === 'undefined') {
+      setInView(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setInView(true)
+            observer.disconnect()
+          }
+        })
+      },
+      { threshold, rootMargin }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [threshold, rootMargin])
+
+  return [ref, inView] as const
+}
+
+/** 单张带懒加载 + 解码优先级的图片：先显示低质量缩略图（或本地乐观预览），解码完成后过渡到大图 */
+function LazyLoadedPhotoImage({
+  photo,
+  onError,
+}: {
+  photo: {
+    thumbnail?: string
+    local_preview_url?: string
+    public_url?: string
+    caption?: string
+  }
+  onError?: (src: string) => void
+}) {
+  const [wrapperRef, inView] = useLazyLoadWithObserver<HTMLDivElement>()
+  const [thumbReady, setThumbReady] = useState(false)
+  const [fullReady, setFullReady] = useState(false)
+  const [errored, setErrored] = useState(false)
+
+  // 预览图（本地/thumbnail）始终显示，因为这些体积极小（<40kb）
+  const posterSrc = photo.local_preview_url || photo.thumbnail
+  const fullSrc = photo.public_url || ''
+
+  return (
+    <div ref={wrapperRef} className="relative w-full h-full">
+      {/* 骨架/背景渐变（比纯白更有质感，也避免图片延迟加载时闪烁） */}
+      <div className="absolute inset-0 bg-gradient-to-br from-sakura-light/60 via-white to-pink-50" />
+
+      {/* 阶段 1：thumbnail / local_preview 先行加载 */}
+      {posterSrc && !fullReady && (
+        <img
+          src={posterSrc}
+          alt=""
+          decoding="async"
+          loading="lazy"
+          draggable={false}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+            thumbReady && !fullReady ? 'opacity-100' : 'opacity-0'
+          }`}
+          onLoad={() => setThumbReady(true)}
+          onError={() => setThumbReady(true)}
+        />
+      )}
+
+      {/* 阶段 2：进入视口才开始加载大图（public_url），并先 decode 避免主线程抖动 */}
+      {inView && fullSrc && !errored && (
+        <img
+          src={fullSrc}
+          alt={photo.caption || '照片'}
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-500 ${
+            fullReady ? 'opacity-100' : 'opacity-0'
+          }`}
+          onLoad={() => {
+            const img = new Image()
+            img.decoding = 'async'
+            img.src = fullSrc
+            img
+              .decode()
+              .catch(() => void 0)
+              .finally(() => setFullReady(true))
+          }}
+          onError={() => {
+            setErrored(true)
+            onError?.(fullSrc)
+          }}
+        />
+      )}
+    </div>
+  )
+}
 
 export function PhotoWall() {
-  const { photos, loading, uploading, uploadPhoto, deletePhoto, updateCaption } = usePhotos()
+  const {
+    photos,
+    loading,
+    uploading,
+    uploadPhotoWithProgress,
+    uploadProgress,
+    cancelUpload,
+    deletePhoto,
+    updateCaption,
+    error: photosError,
+  } = usePhotos()
   const { identity } = useIdentity()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showUpload, setShowUpload] = useState(false)
@@ -62,7 +179,6 @@ export function PhotoWall() {
     setDragOffset(0)
   }
 
-  // 当外部数据变化导致 currentIndex 越界时自动回退
   useEffect(() => {
     if (photos.length > 0 && currentIndex >= photos.length) {
       setCurrentIndex(photos.length - 1)
@@ -94,9 +210,16 @@ export function PhotoWall() {
     }
   }
 
-  const handleUpload = (file: File, caption: string) => {
-    if (!identity) return
-    return uploadPhoto(file, caption, identity)
+  const handleUpload = (
+    file: File,
+    caption: string,
+    opts?: {
+      onPreviewReady?: (p: string) => void
+      onProgress?: (p: UploadProgress) => void
+    }
+  ) => {
+    if (!identity) return Promise.resolve()
+    return uploadPhotoWithProgress(file, caption, identity, opts)
   }
 
   if (loading) {
@@ -119,7 +242,14 @@ export function PhotoWall() {
         >
           上传照片
         </button>
-        <PhotoUpload isOpen={showUpload} onClose={() => setShowUpload(false)} onUpload={handleUpload} uploading={uploading} />
+        <PhotoUpload
+          isOpen={showUpload}
+          onClose={() => setShowUpload(false)}
+          onUpload={handleUpload}
+          uploading={uploading}
+          uploadProgress={uploadProgress}
+          onCancelUpload={cancelUpload}
+        />
       </div>
     )
   }
@@ -138,6 +268,14 @@ export function PhotoWall() {
       <p className="text-sm text-gray-500 mb-4">
         共 {photos.length} 张 · 第 {currentIndex + 1} 张
       </p>
+
+      {photosError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-sm text-red-600">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span className="whitespace-pre-wrap">{photosError}</span>
+        </div>
+      )}
+
       <div
         ref={containerRef}
         className="relative rounded-2xl overflow-hidden bg-sakura-light/20 select-none aspect-[4/3] flex items-center justify-center"
@@ -158,11 +296,65 @@ export function PhotoWall() {
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <img
-              src={currentPhoto?.public_url || ''}
-              alt={currentPhoto?.caption || '照片'}
-              className="max-w-full max-h-full object-contain"
-            />
+            {currentPhoto?.upload_status === 'uploading' ? (
+              <div className="absolute inset-0">
+                <LazyLoadedPhotoImage
+                  photo={{
+                    thumbnail: currentPhoto.thumbnail,
+                    local_preview_url: currentPhoto.local_preview_url,
+                    caption: currentPhoto.caption,
+                  }}
+                />
+                <div className="absolute left-0 right-0 bottom-0 p-3 bg-gradient-to-t from-black/80 via-black/30 to-transparent text-white">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="font-semibold text-sakura-light">⏳ 上传中...乐观展示</span>
+                    <span className="tabular-nums">
+                      {uploadProgress ? `${uploadProgress.percent}%` : '初始化...'}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-sakura-light via-sakura to-pink-400 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${uploadProgress?.percent ?? 0}%` }}
+                      transition={{ duration: 0.2 }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : currentPhoto?.upload_status === 'failed' ? (
+              <div className="absolute inset-0">
+                <LazyLoadedPhotoImage
+                  photo={{
+                    thumbnail: currentPhoto.thumbnail,
+                    local_preview_url: currentPhoto.local_preview_url,
+                    caption: currentPhoto.caption,
+                  }}
+                />
+                <div className="absolute inset-0 bg-red-900/40 backdrop-blur-[1px] flex flex-col items-center justify-center px-4 text-white text-center">
+                  <AlertTriangle className="w-10 h-10 mb-2 text-red-200" />
+                  <p className="font-semibold mb-1">上传失败</p>
+                  <p className="text-xs opacity-90 mb-3">
+                    {photosError || '请检查网络后，删除这张占位图并重新上传'}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="px-4 py-1.5 rounded-full bg-red-500 hover:bg-red-600 text-xs font-medium shadow"
+                    >
+                      删除并清理
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="absolute inset-0">
+                <LazyLoadedPhotoImage
+                  photo={currentPhoto ?? {}}
+                />
+              </div>
+            )}
+
             {currentIndex > 0 && (
               <button
                 onClick={goToPrev}
@@ -199,12 +391,22 @@ export function PhotoWall() {
 
       <div className="mt-4 bg-white rounded-2xl p-4 shadow-sm">
         <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
               currentPhoto?.uploaded_by === 'he' ? 'bg-blue-100 text-blue-600' : 'bg-sakura-light text-sakura-deep'
             }`}>
               {currentPhoto?.uploaded_by === 'he' ? '他' : '她'}
             </span>
+            {currentPhoto?.upload_status === 'uploading' && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                ⏳ 上传中
+              </span>
+            )}
+            {currentPhoto?.upload_status === 'failed' && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">
+                ❌ 上传失败
+              </span>
+            )}
             <span className="text-xs text-gray-400">
               {currentPhoto && formatTimeAgo(currentPhoto.created_at)}
             </span>
@@ -213,6 +415,7 @@ export function PhotoWall() {
             <button
               onClick={startEditCaption}
               className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+              aria-label="编辑配文"
             >
               <Edit3 className="w-4 h-4 text-gray-400" />
             </button>
@@ -231,12 +434,14 @@ export function PhotoWall() {
             <button
               onClick={saveCaption}
               className="px-3 py-2 bg-sakura text-white rounded-xl hover:bg-sakura-deep transition-colors"
+              aria-label="保存配文"
             >
               <Check className="w-4 h-4" />
             </button>
             <button
               onClick={() => setEditingCaption(false)}
               className="px-3 py-2 bg-gray-100 text-gray-500 rounded-xl hover:bg-gray-200 transition-colors"
+              aria-label="取消编辑"
             >
               <X className="w-4 h-4" />
             </button>
@@ -253,10 +458,12 @@ export function PhotoWall() {
       <div className="flex justify-center gap-1.5 mt-4 flex-wrap">
         {photos.map((_, index) => (
           <button
-            key={index}
+            key={photos[index].id}
             onClick={() => setCurrentIndex(index)}
             className={`w-2 h-2 rounded-full transition-all ${
               index === currentIndex ? 'bg-sakura w-6' : 'bg-gray-300 hover:bg-gray-400'
+            } ${
+              photos[index].upload_status === 'failed' ? 'ring-2 ring-red-400' : ''
             }`}
           />
         ))}
@@ -315,6 +522,7 @@ export function PhotoWall() {
             <button
               onClick={() => setShowLightbox(false)}
               className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors z-10"
+              aria-label="关闭"
             >
               <X className="w-6 h-6" />
             </button>
@@ -325,6 +533,7 @@ export function PhotoWall() {
                   goToPrev()
                 }}
                 className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors z-10"
+                aria-label="上一张"
               >
                 <ChevronLeft className="w-8 h-8" />
               </button>
@@ -336,6 +545,7 @@ export function PhotoWall() {
                   goToNext()
                 }}
                 className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors z-10"
+                aria-label="下一张"
               >
                 <ChevronRight className="w-8 h-8" />
               </button>
@@ -348,11 +558,21 @@ export function PhotoWall() {
               className="max-w-full max-h-full p-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <img
-                src={currentPhoto.public_url}
-                alt={currentPhoto.caption || '照片'}
-                className="max-w-full max-h-[85vh] object-contain"
-              />
+              {currentPhoto.upload_status === 'uploading' && currentPhoto.local_preview_url ? (
+                <img
+                  src={currentPhoto.local_preview_url}
+                  alt={currentPhoto.caption || '照片预览'}
+                  className="max-w-full max-h-[85vh] object-contain"
+                />
+              ) : (
+                <img
+                  src={currentPhoto.public_url}
+                  alt={currentPhoto.caption || '照片'}
+                  loading="eager"
+                  decoding="async"
+                  className="max-w-full max-h-[85vh] object-contain"
+                />
+              )}
               {currentPhoto.caption && (
                 <p className="text-white text-center mt-4 text-sm opacity-80">
                   {currentPhoto.caption}
@@ -362,7 +582,7 @@ export function PhotoWall() {
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5">
               {photos.map((_, index) => (
                 <button
-                  key={index}
+                  key={photos[index].id}
                   onClick={(e) => {
                     e.stopPropagation()
                     setCurrentIndex(index)
@@ -377,7 +597,14 @@ export function PhotoWall() {
         )}
       </AnimatePresence>
 
-      <PhotoUpload isOpen={showUpload} onClose={() => setShowUpload(false)} onUpload={handleUpload} uploading={uploading} />
+      <PhotoUpload
+        isOpen={showUpload}
+        onClose={() => setShowUpload(false)}
+        onUpload={handleUpload}
+        uploading={uploading}
+        uploadProgress={uploadProgress}
+        onCancelUpload={cancelUpload}
+      />
     </div>
   )
 }
