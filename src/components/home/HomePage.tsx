@@ -141,7 +141,7 @@ export function HomePage() {
         <div className="relative text-center text-white">
           <div className="flex items-center justify-center gap-1.5 mb-2">
             <Sparkles className="w-4 h-4 opacity-80" />
-            <span className="text-sm opacity-90 font-medium">认识已经</span>
+            <span className="text-sm opacity-90 font-medium">在一起已经</span>
             <Sparkles className="w-4 h-4 opacity-80" />
           </div>
           <div className="flex items-center justify-center gap-1.5 mb-1">
