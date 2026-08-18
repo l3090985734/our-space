@@ -67,12 +67,18 @@ function sha256Pure(message: string): string {
   return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('')
 }
 
+export type CompressedImage = {
+  blob: Blob
+  format: 'webp' | 'jpeg'
+  mimeType: string
+}
+
 export async function compressImage(
   file: File,
   maxWidth = 1920,
   quality = 0.8,
   format: 'webp' | 'jpeg' = 'webp'
-): Promise<Blob> {
+): Promise<CompressedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.decoding = 'async'
@@ -118,13 +124,17 @@ export async function compressImage(
           (blob) => {
             cleanup()
             if (blob) {
-              resolve(blob)
+              resolve({ blob, format, mimeType })
             } else {
-              // fallback：当 Safari 不支持 webp toBlob 时用 jpeg 兜底
+              // fallback：Safari 不支持 webp toBlob 时，用 jpeg 兜底
+              // 并且把实际用的格式返回给调用方，确保后缀/Content-Type 全链路一致
               canvas.toBlob(
                 (fallbackBlob) => {
-                  if (fallbackBlob) resolve(fallbackBlob)
-                  else reject(new Error('Failed to compress image'))
+                  if (fallbackBlob) {
+                    resolve({ blob: fallbackBlob, format: 'jpeg', mimeType: 'image/jpeg' })
+                  } else {
+                    reject(new Error('Failed to compress image'))
+                  }
                 },
                 'image/jpeg',
                 0.85
@@ -272,7 +282,7 @@ export async function xhrUploadWithProgress(
   uploadUrl: string,
   supabaseAnonKey: string,
   file: Blob,
-  _contentType: string,
+  mimeType: string,
   onProgress?: (p: UploadProgress) => void,
   signal?: AbortSignal
 ): Promise<{ path: string }> {
@@ -284,6 +294,13 @@ export async function xhrUploadWithProgress(
     let emaSpeed = 0
     const alpha = 0.35
     const startTs = Date.now()
+
+    // 根据 MIME 推断扩展名，保证 FormData 字段文件名与实际内容一致
+    const fileExt = (() => {
+      if (mimeType.includes('jpeg') || mimeType.includes('jpg')) return 'jpeg'
+      if (mimeType.includes('png')) return 'png'
+      return 'webp'
+    })()
 
     signal?.addEventListener('abort', () => {
       try { xhr.abort() } catch { /* ignore */ }
@@ -334,9 +351,11 @@ export async function xhrUploadWithProgress(
     xhr.open('POST', uploadUrl, true)
     xhr.setRequestHeader('Authorization', `Bearer ${supabaseAnonKey}`)
     xhr.setRequestHeader('apikey', supabaseAnonKey)
-    // 用 multipart 避免 Supabase S3 presign 复杂度，用 storage API 的 object 端点（file field 必须叫 "file"）
+    // 用 multipart：Supabase storage object 端点要求 file 字段名必须叫 "file"
+    // 文件名后缀必须与 Blob 实际内容 MIME 一致，否则 Content-Disposition 里的 filename
+    // 和 MIME 不匹配会导致存储对象元数据错误、浏览器渲染失败
     const form = new FormData()
-    form.append('file', file, 'image.webp')
+    form.append('file', file, `image.${fileExt}`)
     xhr.send(form)
   })
 }

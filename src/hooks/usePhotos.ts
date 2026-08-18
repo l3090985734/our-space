@@ -6,6 +6,7 @@ import {
   fastPreview,
   xhrUploadWithProgress,
   type UploadProgress,
+  type CompressedImage,
 } from '../lib/utils'
 import { demoStorage, isDemoMode } from '../lib/mockStorage'
 import { onRefresh } from '../lib/refreshEvent'
@@ -127,10 +128,16 @@ export function usePhotos() {
         ])
 
         // ============= 阶段 2：并行生成 thumbnail + 压缩原图（CPU 并行 + requestIdleCallback）=============
-        const [thumbnail, compressedBlob] = await Promise.all([
-          generateThumbnail(file, 40, 0.3),
+        // compressImage 返回 { blob, format, mimeType }：
+        //   - Safari 不支持 WebP 会 fallback 成 JPEG，format/mimeType 会相应变化
+        //   - 后续扩展名、Content-Type、文件名必须用实际格式，否则会出现"文件后缀 .webp 实际内容 JPEG"的裂图
+        const [thumbnail, compressed] = await Promise.all<[Promise<string>, Promise<CompressedImage>]>([
+          generateThumbnail(file, 40, 0.3) as Promise<string>,
           compressImage(file, 1280, 0.78, 'webp'),
         ])
+        const compressedBlob = compressed.blob
+        const compressedFormat = compressed.format // 'webp' 或 'jpeg'（Safari fallback 后）
+        const compressedMimeType = compressed.mimeType
 
         // 压缩完更新进度（20% → 对应"压缩完成"）
         setUploadProgress((p) => (p ? { ...p, percent: 20 } : null))
@@ -163,7 +170,7 @@ export function usePhotos() {
             reader.readAsDataURL(compressedBlob)
           })
           const newPhoto = demoStorage.addPhoto(
-            `demo/${Date.now()}.webp`,
+            `demo/${Date.now()}.${compressedFormat}`,
             caption,
             uploadedBy,
             compressedUrl,
@@ -177,15 +184,20 @@ export function usePhotos() {
         }
 
         // ============= 阶段 3：Supabase 上传（>2MB走xhr进度；<2MB直接 storage.upload）=============
-        const fileExt = 'webp'
+        // 扩展名 / contentType 用压缩后的实际格式（可能因 WebP fallback 变成 jpeg）
+        const fileExt = compressedFormat
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
         const filePath = `${uploadedBy}/${fileName}`
 
         if (compressedBlob.size >= XHR_UPLOAD_THRESHOLD_BYTES) {
           const anonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined
           const sbUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined
+          // Bug 修复：之前 encodeURIComponent(filePath) 把「他/xxx.webp」整个编码成「%E4%BB%96%2Fxxx.webp」，
+          // 导致 / 被变成字面量文件名的一部分，Supabase 存的是"他%2Fxxx.webp"单个文件（不是目录结构），
+          // 前端 DB 拿的 storage_path 是"他/xxx.webp"，getPublicUrl 找不到 → 裂图 404。
+          // 修复：按 / 分段，每一段单独 encodeURIComponent，再用 / 拼回去。
           const uploadEndpoint = sbUrl && anonKey
-            ? `${sbUrl.replace(/\/$/, '')}/storage/v1/object/photos/${encodeURIComponent(filePath)}`
+            ? `${sbUrl.replace(/\/$/, '')}/storage/v1/object/photos/${filePath.split('/').map(encodeURIComponent).join('/')}`
             : null
 
           if (uploadEndpoint) {
@@ -196,7 +208,7 @@ export function usePhotos() {
                 uploadEndpoint,
                 anonKey!,
                 compressedBlob,
-                'image/webp',
+                compressedMimeType, // 实际 MIME：image/webp 或 image/jpeg
                 (p) => {
                   // 把压缩占用的 20% 比例叠加进来：上传部分映射为 20%~100%
                   const blended: UploadProgress = {
@@ -217,7 +229,7 @@ export function usePhotos() {
             const { error: uploadError } = await supabase.storage
               .from('photos')
               .upload(filePath, compressedBlob, {
-                contentType: 'image/webp',
+                contentType: compressedMimeType,
               })
             if (uploadError) throw uploadError
             uploadedPath = filePath
@@ -227,7 +239,7 @@ export function usePhotos() {
           const { error: uploadError } = await supabase.storage
             .from('photos')
             .upload(filePath, compressedBlob, {
-              contentType: 'image/webp',
+              contentType: compressedMimeType,
             })
           if (uploadError) throw uploadError
           uploadedPath = filePath
