@@ -2,6 +2,25 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ')
 }
 
+/**
+ * Promise 超时兜底：防止 new Image() 加载不支持的格式（HEIC/RAW/损坏图片）
+ * 时既不触发 onload 也不触发 onerror，导致 Promise 永久 pending →
+ * UI 永远显示「压缩图片中」。
+ *
+ * 超过 timeoutMs 直接 reject，由调用方 catch 后降级或报错。
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      const timer = setTimeout(() => {
+        clearTimeout(timer)
+        reject(new Error(message))
+      }, timeoutMs)
+    }),
+  ])
+}
+
 export async function sha256(message: string): Promise<string> {
   // 优先使用浏览器原生 crypto.subtle（HTTPS/localhost 可用）
   if (crypto.subtle) {
@@ -79,7 +98,7 @@ export async function compressImage(
   quality = 0.8,
   format: 'webp' | 'jpeg' = 'webp'
 ): Promise<CompressedImage> {
-  return new Promise((resolve, reject) => {
+  const task = new Promise<CompressedImage>((resolve, reject) => {
     const img = new Image()
     img.decoding = 'async'
     const objectUrl = URL.createObjectURL(file)
@@ -157,13 +176,14 @@ export async function compressImage(
     }
     img.src = objectUrl
   })
+  return withTimeout(task, 60000, '图片压缩超时，请换一张小一点的图再试')
 }
 
 /**
  * 快速生成 400px 低质量预览图（<100KB），用于用户选图后 200ms 内渲染
  */
 export async function fastPreview(file: File, maxWidth = 400): Promise<string> {
-  return new Promise((resolve, reject) => {
+  const task = new Promise<string>((resolve, reject) => {
     const img = new Image()
     img.decoding = 'async'
     const objectUrl = URL.createObjectURL(file)
@@ -197,6 +217,7 @@ export async function fastPreview(file: File, maxWidth = 400): Promise<string> {
     }
     img.src = objectUrl
   })
+  return withTimeout(task, 30000, '预览图生成超时，请重新选择图片')
 }
 
 export function generateThumbnail(
@@ -204,7 +225,7 @@ export function generateThumbnail(
   maxSize = 40,
   quality = 0.3
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
+  const task = new Promise<string>((resolve, reject) => {
     const img = new Image()
     img.decoding = 'async'
     const objectUrl = URL.createObjectURL(file)
@@ -244,6 +265,7 @@ export function generateThumbnail(
     }
     img.src = objectUrl
   })
+  return withTimeout(task, 20000, '缩略图生成超时，请重新选择图片')
 }
 
 /** 上传进度事件回调 */

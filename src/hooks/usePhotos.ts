@@ -99,7 +99,16 @@ export function usePhotos() {
     ) => {
       let uploadedPath: string | null = null
       let optimisticId: number | null = null
-      const localPreviewDataUrl = await fastPreview(file, 400)
+      // 阶段 0：快速预览。fastPreview 失败（浏览器不支持的格式 / 损坏图 / 超时）时
+      // 不要直接让整个上传失败，降级为 object URL 让用户能先看到预览；
+      // 后面压缩阶段如果还失败会正常抛错走 catch（不会永久卡压缩中）。
+      const localPreviewDataUrl = await fastPreview(file, 400).catch(() => {
+        try {
+          return URL.createObjectURL(file)
+        } catch {
+          return ''
+        }
+      })
       opts?.onPreviewReady?.(localPreviewDataUrl)
 
       try {
