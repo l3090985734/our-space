@@ -186,7 +186,7 @@ export function PhotoUpload({
                       <div className="flex items-center justify-between text-[11px] mb-2 leading-tight">
                         <span className="font-semibold text-sakura-light">
                           {progress.percent >= 100 ? '✅ 上传完成'
-                            : progress.percent < 20 ? '🗜️ 压缩图片中...'
+                            : progress.percent < 15 ? '📷 准备上传...'
                             : progress.percent < 100 ? '☁️ 上传到云端中...'
                             : '保存数据中...'}
                         </span>
@@ -287,8 +287,8 @@ export function PhotoUpload({
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       {progress && progress.percent >= 100
                         ? '写入照片墙...'
-                        : progress && progress.percent < 20
-                        ? '压缩图片中...'
+                        : progress && progress.percent < 15
+                        ? '准备上传...'
                         : '上传中...'}
                     </>
                   ) : (

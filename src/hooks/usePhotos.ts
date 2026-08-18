@@ -1,16 +1,40 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import {
-  compressImage,
   generateThumbnail,
-  fastPreview,
   xhrUploadWithProgress,
   type UploadProgress,
-  type CompressedImage,
 } from '../lib/utils'
 import { demoStorage, isDemoMode } from '../lib/mockStorage'
 import { onRefresh } from '../lib/refreshEvent'
 import type { Photo, Identity } from '../types'
+
+/** 从文件名推断扩展名；取不到或无扩展名时按 MIME 兜底，最后用 jpg 保底 */
+function inferFileExt(file: File): string {
+  const dot = file.name.lastIndexOf('.')
+  if (dot > 0) {
+    const raw = file.name.slice(dot + 1).toLowerCase().slice(0, 8)
+    if (raw) return raw.replace(/[^a-z0-9]/g, '')
+  }
+  switch (file.type) {
+    case 'image/png': return 'png'
+    case 'image/gif': return 'gif'
+    case 'image/webp': return 'webp'
+    case 'image/bmp': return 'bmp'
+    case 'image/tiff': return 'tiff'
+    default: return 'jpg'
+  }
+}
+
+/** 取上传用的真实 MIME：file.type 可能是空字符串，兜底成 jpeg */
+function inferMimeType(file: File): string {
+  if (file.type && file.type.startsWith('image/')) return file.type
+  const ext = inferFileExt(file)
+  if (ext === 'png') return 'image/png'
+  if (ext === 'gif') return 'image/gif'
+  if (ext === 'webp') return 'image/webp'
+  return 'image/jpeg'
+}
 
 /** 将 Supabase 英文错误转为中文提示 */
 function translateError(message: string): string {
@@ -81,10 +105,11 @@ export function usePhotos() {
   }, [fetchPhotos])
 
   /**
-   * 【性能优化版上传】
-   * 阶段 1（<200ms）：生成 400px 低质量预览图 + 乐观插入照片列表 → 用户立刻看到刚选的照片
-   * 阶段 2：后台生成缩略图 + 1080p WebP 压缩 + 上传（超过 2MB 走 xhr 实时进度）
-   * 阶段 3：成功后替换为真实 public_url / 失败则标记 failed + Toast 错误 + 回滚逻辑
+   * 【无压缩直传版】用户明确要求去掉 canvas 压缩：
+   *   阶段 0：URL.createObjectURL(file) 做预览（零 canvas、零 new Image、零阻塞）
+   *   阶段 1：generateThumbnail 做 40px 小缩略图；失败给空字符串不阻塞
+   *   阶段 2：原始 File Blob 直接上传，保留 >2MB xhr 实时进度
+   *   阶段 3：成功 → 替换乐观占位；失败 → 标记 failed + Toast 错误 + 回滚 orphan 文件
    */
   const uploadPhotoWithProgress = useCallback(
     async (
@@ -99,23 +124,27 @@ export function usePhotos() {
     ) => {
       let uploadedPath: string | null = null
       let optimisticId: number | null = null
-      // 阶段 0：快速预览。fastPreview 失败（浏览器不支持的格式 / 损坏图 / 超时）时
-      // 不要直接让整个上传失败，降级为 object URL 让用户能先看到预览；
-      // 后面压缩阶段如果还失败会正常抛错走 catch（不会永久卡压缩中）。
-      const localPreviewDataUrl = await fastPreview(file, 400).catch(() => {
-        try {
-          return URL.createObjectURL(file)
-        } catch {
-          return ''
-        }
-      })
+      const uploadBlob: Blob = file // 直接传原始文件，不压缩
+      const uploadMimeType = inferMimeType(file)
+      const uploadExt = inferFileExt(file)
+      const uploadTotal = uploadBlob.size
+
+      // 阶段 0：直接用浏览器原生 ObjectURL 做预览
+      // 100% 不做 canvas/new Image，HEIC/损坏/超大图都不会卡住
+      let localPreviewDataUrl = ''
+      try {
+        localPreviewDataUrl = URL.createObjectURL(file)
+      } catch {
+        localPreviewDataUrl = ''
+      }
       opts?.onPreviewReady?.(localPreviewDataUrl)
 
       try {
         setUploading(true)
         setError(null)
+        // 直接进入上传阶段（跳过压缩 0~20 的区间，从 5% 开始让用户看到"已开始"）
         setUploadProgress({
-          percent: 1, loaded: 0, total: file.size,
+          percent: 5, loaded: 0, total: uploadTotal,
           speedBps: 0, etaSec: 0, elapsedSec: 0,
         })
 
@@ -136,75 +165,60 @@ export function usePhotos() {
           ...prev,
         ])
 
-        // ============= 阶段 2：并行生成 thumbnail + 压缩原图（CPU 并行 + requestIdleCallback）=============
-        // compressImage 返回 { blob, format, mimeType }：
-        //   - Safari 不支持 WebP 会 fallback 成 JPEG，format/mimeType 会相应变化
-        //   - 后续扩展名、Content-Type、文件名必须用实际格式，否则会出现"文件后缀 .webp 实际内容 JPEG"的裂图
-        const [thumbnail, compressed] = await Promise.all<[Promise<string>, Promise<CompressedImage>]>([
-          generateThumbnail(file, 40, 0.3) as Promise<string>,
-          compressImage(file, 1280, 0.78, 'webp'),
-        ])
-        const compressedBlob = compressed.blob
-        const compressedFormat = compressed.format // 'webp' 或 'jpeg'（Safari fallback 后）
-        const compressedMimeType = compressed.mimeType
+        // ============= 阶段 1：生成 40px 缩略图（仅照片墙卡片用，失败不阻塞，兜底空串）=============
+        const thumbnail = await generateThumbnail(file, 40, 0.3).catch(() => '')
 
-        // 压缩完更新进度（20% → 对应"压缩完成"）
-        setUploadProgress((p) => (p ? { ...p, percent: 20 } : null))
-        opts?.onProgress?.({ percent: 20, loaded: 0, total: compressedBlob.size, speedBps: 0, etaSec: 0, elapsedSec: 0 })
+        // 缩略图完成，进度跳到 10%（进入真正上传阶段）
+        setUploadProgress((p) => (p ? { ...p, percent: 10 } : null))
+        opts?.onProgress?.({ percent: 10, loaded: 0, total: uploadTotal, speedBps: 0, etaSec: 0, elapsedSec: 0 })
 
         if (isDemoMode()) {
-          // Demo：模拟压缩完成 + 上传 0~100
-          const totalDemo = compressedBlob.size
-          let prog = 20
+          // Demo：模拟上传 10%~100%
+          let prog = 10
           const demoStartTs = Date.now()
           while (prog < 95) {
             await new Promise((r) => setTimeout(r, 40))
-            prog = Math.min(95, prog + 5)
-            const loaded = Math.round((prog / 100) * totalDemo)
+            prog = Math.min(95, prog + 4)
+            const loaded = Math.round((prog / 100) * uploadTotal)
             const dt = (Date.now() - demoStartTs) / 1000
             const speed = dt > 0 ? Math.round(loaded / dt) : 0
             const update: UploadProgress = {
-              percent: prog, loaded, total: totalDemo,
+              percent: prog, loaded, total: uploadTotal,
               speedBps: speed,
-              etaSec: speed > 0 ? Math.round((totalDemo - loaded) / speed) : 0,
+              etaSec: speed > 0 ? Math.round((uploadTotal - loaded) / speed) : 0,
               elapsedSec: Math.round(dt),
             }
             setUploadProgress(update)
             opts?.onProgress?.(update)
           }
 
-          const compressedUrl = await new Promise<string>((resolve) => {
+          const fileDataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader()
             reader.onload = () => resolve(reader.result as string)
-            reader.readAsDataURL(compressedBlob)
+            reader.onerror = () => reject(reader.error || new Error('read failed'))
+            reader.readAsDataURL(uploadBlob)
           })
           const newPhoto = demoStorage.addPhoto(
-            `demo/${Date.now()}.${compressedFormat}`,
+            `demo/${Date.now()}.${uploadExt}`,
             caption,
             uploadedBy,
-            compressedUrl,
+            fileDataUrl,
             thumbnail
           )
-          // 替换乐观占位为真实记录
           setPhotos((prev) => prev.map((p) => (p.id === optimisticId ? newPhoto : p)))
-          setUploadProgress({ percent: 100, loaded: totalDemo, total: totalDemo, speedBps: 0, etaSec: 0, elapsedSec: 0 })
-          opts?.onProgress?.({ percent: 100, loaded: totalDemo, total: totalDemo, speedBps: 0, etaSec: 0, elapsedSec: 0 })
+          setUploadProgress({ percent: 100, loaded: uploadTotal, total: uploadTotal, speedBps: 0, etaSec: 0, elapsedSec: 0 })
+          opts?.onProgress?.({ percent: 100, loaded: uploadTotal, total: uploadTotal, speedBps: 0, etaSec: 0, elapsedSec: 0 })
           return
         }
 
-        // ============= 阶段 3：Supabase 上传（>2MB走xhr进度；<2MB直接 storage.upload）=============
-        // 扩展名 / contentType 用压缩后的实际格式（可能因 WebP fallback 变成 jpeg）
-        const fileExt = compressedFormat
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
+        // ============= 阶段 2：Supabase 上传原始文件（>2MB 走 xhr 进度；<2MB 直接 storage.upload）=============
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${uploadExt}`
         const filePath = `${uploadedBy}/${fileName}`
 
-        if (compressedBlob.size >= XHR_UPLOAD_THRESHOLD_BYTES) {
+        if (uploadBlob.size >= XHR_UPLOAD_THRESHOLD_BYTES) {
           const anonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined
           const sbUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined
-          // Bug 修复：之前 encodeURIComponent(filePath) 把「他/xxx.webp」整个编码成「%E4%BB%96%2Fxxx.webp」，
-          // 导致 / 被变成字面量文件名的一部分，Supabase 存的是"他%2Fxxx.webp"单个文件（不是目录结构），
-          // 前端 DB 拿的 storage_path 是"他/xxx.webp"，getPublicUrl 找不到 → 裂图 404。
-          // 修复：按 / 分段，每一段单独 encodeURIComponent，再用 / 拼回去。
+          // 路径按段编码：保护"/"目录分隔符，避免"他%2Ffile.webp"存成单个文件名
           const uploadEndpoint = sbUrl && anonKey
             ? `${sbUrl.replace(/\/$/, '')}/storage/v1/object/photos/${filePath.split('/').map(encodeURIComponent).join('/')}`
             : null
@@ -216,13 +230,13 @@ export function usePhotos() {
               await xhrUploadWithProgress(
                 uploadEndpoint,
                 anonKey!,
-                compressedBlob,
-                compressedMimeType, // 实际 MIME：image/webp 或 image/jpeg
+                uploadBlob,
+                uploadMimeType,
                 (p) => {
-                  // 把压缩占用的 20% 比例叠加进来：上传部分映射为 20%~100%
+                  // 上传阶段映射到 10%~100%（前面 10% 是缩略图+准备）
                   const blended: UploadProgress = {
                     ...p,
-                    percent: 20 + Math.round(p.percent * 0.8),
+                    percent: 10 + Math.round(p.percent * 0.9),
                   }
                   setUploadProgress(blended)
                   opts?.onProgress?.(blended)
@@ -234,26 +248,22 @@ export function usePhotos() {
               aborterRef.current = null
             }
           } else {
-            // 没有配置 VITE_SUPABASE_URL，回退 storage.upload（无进度）
+            // 没有配置 URL 时回退 storage.upload（无进度）
             const { error: uploadError } = await supabase.storage
               .from('photos')
-              .upload(filePath, compressedBlob, {
-                contentType: compressedMimeType,
-              })
+              .upload(filePath, uploadBlob, { contentType: uploadMimeType })
             if (uploadError) throw uploadError
             uploadedPath = filePath
-            setUploadProgress({ percent: 100, loaded: compressedBlob.size, total: compressedBlob.size, speedBps: 0, etaSec: 0, elapsedSec: 0 })
+            setUploadProgress({ percent: 100, loaded: uploadTotal, total: uploadTotal, speedBps: 0, etaSec: 0, elapsedSec: 0 })
           }
         } else {
           const { error: uploadError } = await supabase.storage
             .from('photos')
-            .upload(filePath, compressedBlob, {
-              contentType: compressedMimeType,
-            })
+            .upload(filePath, uploadBlob, { contentType: uploadMimeType })
           if (uploadError) throw uploadError
           uploadedPath = filePath
-          setUploadProgress({ percent: 95, loaded: compressedBlob.size, total: compressedBlob.size, speedBps: 0, etaSec: 0, elapsedSec: 0 })
-          opts?.onProgress?.({ percent: 95, loaded: compressedBlob.size, total: compressedBlob.size, speedBps: 0, etaSec: 0, elapsedSec: 0 })
+          setUploadProgress({ percent: 95, loaded: uploadTotal, total: uploadTotal, speedBps: 0, etaSec: 0, elapsedSec: 0 })
+          opts?.onProgress?.({ percent: 95, loaded: uploadTotal, total: uploadTotal, speedBps: 0, etaSec: 0, elapsedSec: 0 })
         }
 
         // 写入 DB
