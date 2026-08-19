@@ -26,7 +26,7 @@ export function useNotes() {
       setError(null)
 
       if (isDemoMode()) {
-        await new Promise((r) => setTimeout(r, 300))
+        await new Promise((r) => setTimeout(r, 20))
         const allNotes = demoStorage.getNotes().filter((n) => n.parent_id === null)
         const start = page * PAGE_SIZE
         const end = start + PAGE_SIZE

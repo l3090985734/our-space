@@ -21,7 +21,7 @@ export function usePhotoComments(photoId: number | undefined) {
       setError(null)
 
       if (isDemoMode()) {
-        await new Promise((r) => setTimeout(r, 200))
+        await new Promise((r) => setTimeout(r, 20))
         setComments(demoStorage.getPhotoComments(photoId))
         return
       }

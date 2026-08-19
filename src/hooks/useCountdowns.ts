@@ -15,7 +15,7 @@ export function useCountdowns() {
       setError(null)
 
       if (isDemoMode()) {
-        await new Promise((r) => setTimeout(r, 300))
+        await new Promise((r) => setTimeout(r, 20))
         setCountdowns(demoStorage.getCountdowns())
         return
       }

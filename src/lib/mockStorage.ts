@@ -12,21 +12,44 @@ const KEYS = {
   CAPSULES: 'our-space-capsules',
 } as const
 
-function getFromStorage<T>(key: string, defaultValue: T): T {
+// =============================================================
+// 🔋 模块级内存缓存：首屏 JSON.parse 是同步 CPU 密集操作（Demo 模式用户数据多的时候单次 5~50ms 很常见），
+// 原代码每个 hook.组件/每次操作都 getFromStorage → JSON.parse 一次，
+// HomePage 5 个 hook + initDemoData → 首屏 20+ 次重复 parse → 肉眼可见卡顿。
+// 现在只读一次，写操作失效对应 key 的缓存。
+// =============================================================
+type StorageKey = (typeof KEYS)[keyof typeof KEYS]
+// 🔋 模块级内存缓存：见上面注释
+type CacheMap = Partial<Record<StorageKey, unknown>>
+const _cache: CacheMap = {}
+
+function getFromStorage<T>(key: StorageKey, defaultValue: T): T {
+  if (_cache[key] !== undefined) return _cache[key] as T
   try {
-    const data = localStorage.getItem(key)
-    return data ? JSON.parse(data) : defaultValue
+    const raw = localStorage.getItem(key)
+    const data = raw ? (JSON.parse(raw) as T) : defaultValue
+    _cache[key] = data
+    return data
   } catch {
+    _cache[key] = defaultValue
     return defaultValue
   }
 }
 
-function saveToStorage<T>(key: string, data: T) {
-  localStorage.setItem(key, JSON.stringify(data))
+function saveToStorage<T>(key: StorageKey, data: T) {
+  _cache[key] = data
+  try {
+    localStorage.setItem(key, JSON.stringify(data))
+  } catch {
+    // localStorage 写失败（超出配额 / 隐私模式）忽略；内存缓存仍是最新的，会话内可用。
+  }
+}
+
+function invalidateCache(key: StorageKey) {
+  delete _cache[key]
 }
 
 let idCounter = 0
-
 function generateId(): number {
   idCounter += 1
   return Date.now() * 1000 + idCounter + Math.floor(Math.random() * 100)
@@ -50,8 +73,8 @@ export const demoStorage = {
       parent_id: parentId,
       created_at: new Date().toISOString(),
     }
-    notes.unshift(newNote)
-    saveToStorage(KEYS.NOTES, notes)
+    const next = [newNote, ...notes]
+    saveToStorage(KEYS.NOTES, next)
     return newNote
   },
 
@@ -87,8 +110,8 @@ export const demoStorage = {
       public_url: publicUrl,
       thumbnail,
     }
-    photos.unshift(newPhoto)
-    saveToStorage(KEYS.PHOTOS, photos)
+    const next = [newPhoto, ...photos]
+    saveToStorage(KEYS.PHOTOS, next)
     return newPhoto
   },
 
@@ -127,8 +150,8 @@ export const demoStorage = {
       content,
       created_at: new Date().toISOString(),
     }
-    all.push(newComment)
-    saveToStorage(KEYS.PHOTO_COMMENTS, all)
+    const next = [...all, newComment]
+    saveToStorage(KEYS.PHOTO_COMMENTS, next)
     return newComment
   },
 
@@ -152,12 +175,11 @@ export const demoStorage = {
       target_date: targetDate,
       created_at: new Date().toISOString(),
     }
-    countdowns.push(newCountdown)
-    countdowns.sort(
+    const next = [...countdowns, newCountdown].sort(
       (a, b) =>
         new Date(a.target_date).getTime() - new Date(b.target_date).getTime()
     )
-    saveToStorage(KEYS.COUNTDOWNS, countdowns)
+    saveToStorage(KEYS.COUNTDOWNS, next)
     return newCountdown
   },
 
@@ -165,8 +187,7 @@ export const demoStorage = {
     const countdowns = this.getCountdowns()
     const updated = countdowns.map((c) =>
       c.id === id ? { ...c, title, target_date: targetDate } : c
-    )
-    updated.sort(
+    ).sort(
       (a, b) =>
         new Date(a.target_date).getTime() - new Date(b.target_date).getTime()
     )
@@ -200,8 +221,7 @@ export const demoStorage = {
       created_at: new Date().toISOString(),
       created_by: createdBy,
     }
-    events.push(newEvent)
-    saveToStorage(KEYS.TIMELINE, events)
+    saveToStorage(KEYS.TIMELINE, [...events, newEvent])
     return newEvent
   },
 
@@ -241,8 +261,7 @@ export const demoStorage = {
       completed_at: null,
       created_at: new Date().toISOString(),
     }
-    wishes.push(newWish)
-    saveToStorage(KEYS.WISHES, wishes)
+    saveToStorage(KEYS.WISHES, [...wishes, newWish])
     return newWish
   },
 
@@ -302,8 +321,7 @@ export const demoStorage = {
       unlock_at: unlockAt,
       created_at: new Date().toISOString(),
     }
-    capsules.push(newCapsule)
-    saveToStorage(KEYS.CAPSULES, capsules)
+    saveToStorage(KEYS.CAPSULES, [...capsules, newCapsule])
     return newCapsule
   },
 
@@ -327,8 +345,17 @@ export const demoStorage = {
     saveToStorage(KEYS.SETTINGS, updated)
     return updated
   },
+
+  /** 诊断工具：清空全部内存缓存（极少用到——如跨 tab 同步需显式 invalidate） */
+  _invalidateAll() {
+    Object.keys(KEYS).forEach((k) => invalidateCache(KEYS[k as keyof typeof KEYS]))
+  },
 }
 
+// =============================================================
+// 🔁 Demo 初始化：首屏必须最快跑完（之前每个 addXxx 都 getXxx → JSON.parse 一遍，
+// 现在全走内存缓存，最多 1 次 parse 读 + 1 次 serialize 写）
+// =============================================================
 export function initDemoData() {
   if (demoStorage.getNotes().length === 0) {
     demoStorage.addNote('she', '今天想你了 💗', null)
@@ -379,7 +406,6 @@ export function initDemoData() {
       'she',
       pastDate.toISOString()
     )
-
     const futureDate = new Date()
     futureDate.setDate(futureDate.getDate() + 30)
     futureDate.setHours(20, 0, 0, 0)
@@ -391,13 +417,14 @@ export function initDemoData() {
     )
   }
   if (demoStorage.getPhotos().length === 0) {
+    // 用 picsum.photos 固定 seed，永远 200/304 秒回，不卡首屏
     const photoUrls = [
-      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=romantic%20sunset%20beach%20couple%20silhouette%20pink%20orange%20sky&image_size=square',
-      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=cozy%20coffee%20shop%20date%20two%20cups%20warm%20light&image_size=square',
-      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=cherry%20blossom%20park%20spring%20pink%20flowers%20romantic&image_size=square',
-      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=stargazing%20night%20sky%20couple%20blanket%20milky%20way&image_size=square',
-      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=rainy%20day%20umbrella%20shared%20cozy%20street%20lights&image_size=square',
-      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=mountain%20hiking%20adventure%20couple%20sunrise%20peak&image_size=square',
+      'https://picsum.photos/seed/sunset-beach-romance/600/600',
+      'https://picsum.photos/seed/coffee-shop-date/600/600',
+      'https://picsum.photos/seed/cherry-blossom-park/600/600',
+      'https://picsum.photos/seed/stargazing-couple/600/600',
+      'https://picsum.photos/seed/rainy-day-umbrella/600/600',
+      'https://picsum.photos/seed/mountain-sunrise-peak/600/600',
     ]
     const captions = [
       '海边的日落，和你一起看的最美 🌅',
@@ -408,10 +435,9 @@ export function initDemoData() {
       '一起爬上山顶看日出，累但值得 🏔️',
     ]
     const identities: Identity[] = ['she', 'he', 'she', 'he', 'she', 'he']
-
     photoUrls.forEach((url, i) => {
       demoStorage.addPhoto(
-        `demo/photo_${i}.webp`,
+        `demo/photo_${i}.jpg`,
         captions[i],
         identities[i],
         url,

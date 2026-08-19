@@ -18,7 +18,7 @@ export function useSettings() {
       setLoading(true)
 
       if (isDemoMode()) {
-        await new Promise((r) => setTimeout(r, 200))
+        await new Promise((r) => setTimeout(r, 20))
         setSettings(demoStorage.getSettings())
         return
       }

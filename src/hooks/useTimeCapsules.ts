@@ -45,7 +45,7 @@ export function useTimeCapsules() {
       setError(null)
 
       if (isDemoMode()) {
-        await new Promise((r) => setTimeout(r, 300))
+        await new Promise((r) => setTimeout(r, 20))
         setCapsules(demoStorage.getTimeCapsules())
         return
       }
